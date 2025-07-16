@@ -103,7 +103,7 @@ def insert_initial_data_from_json():
                         del entry['_id'] # If invalid string, remove to let MongoDB generate
                 elif '_id' in entry: # If it's something else, like None or non-string, remove
                     del entry['_id']
-                
+                    
             entries_collection.insert_many(initial_data)
             logger.info(f"Inserted {len(initial_data)} initial entries from {json_file_path} into MongoDB.")
         else:
@@ -227,7 +227,15 @@ def serve_index():
         logger.error(f"Error serving index.html: {e}")
         return "Error loading page.", 500
 
-@app.route('/structures')
+@app.route('/index.html') # NEW: Route for index.html directly
+def serve_index_html():
+    try:
+        return send_from_directory('.', 'index.html')
+    except Exception as e:
+        logger.error(f"Error serving index.html: {e}")
+        return "Error loading page.", 500
+
+@app.route('/structures.html') # CHANGED: Added .html extension
 def serve_structures():
     try:
         return send_from_directory('.', 'structures.html')
@@ -235,7 +243,7 @@ def serve_structures():
         logger.error(f"Error serving structures.html: {e}")
         return "Error loading structures page.", 500
 
-@app.route('/analysis')
+@app.route('/analysis.html') # CHANGED: Added .html extension
 def serve_analysis():
     try:
         return send_from_directory('.', 'analysis.html')
@@ -271,7 +279,7 @@ def get_entries_route(): # Renamed to avoid conflict with helper
                 parsed_peak_key = f'{peak_type}_peaks_parsed'
                 if not entry.get(parsed_peak_key) or entry.get(parsed_peak_key).empty: # Check if DataFrame is empty
                     continue
-                
+                    
             filtered.append(_clean_entry(entry))
             
         return jsonify({
