@@ -194,7 +194,7 @@ def _clean_entry(entry):
         cleaned.pop(f'{peak_type}_peaks_parsed', None)
     
     # Remove MongoDB's internal _id if it's still there after conversion to string
-    cleaned.pop('_id', None) 
+    cleaned.pop('_id', None)  
     
     return cleaned
 
