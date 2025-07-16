@@ -2,6 +2,7 @@ import os
 import uuid # For generating unique IDs
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
+from bson.objectid import ObjectId # Import ObjectId for _id handling
 import pandas as pd
 from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
@@ -21,6 +22,7 @@ DB_NAME = "nmr_database_app" # This will be the name of your database inside Mon
 
 client = None # Initialize client and db to None
 db = None
+entries_collection = None # Initialize entries_collection to None
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -33,26 +35,37 @@ if not MONGO_URI:
     try:
         client = MongoClient('mongodb://localhost:27017/')
         db = client[DB_NAME]
+        entries_collection = db.entries # Assign collection for local fallback
         logger.warning("Using local MongoDB connection (MONGO_URI not set for deployment).")
     except ConnectionFailure as e:
         logger.error(f"Could not connect to local MongoDB: {e}. Data will not be persistent.")
         client = None
         db = None
+        entries_collection = None
 else:
     try:
         client = MongoClient(MONGO_URI)
         # The ismaster command is cheap and does not require auth.
         client.admin.command('ismaster')
         db = client[DB_NAME]
+        entries_collection = db.entries # Assign collection for Atlas connection
         logger.info(f"Connected to MongoDB Atlas database: {DB_NAME}")
     except ConnectionFailure as e:
         logger.error(f"Could not connect to MongoDB Atlas at {MONGO_URI}: {e}. Data will not be persistent.")
         client = None
         db = None
+        entries_collection = None
     except OperationFailure as e:
         logger.error(f"Authentication or operation failure with MongoDB Atlas: {e}. Check MONGO_URI credentials.")
         client = None
         db = None
+        entries_collection = None
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during MongoDB connection: {e}. Data will not be persistent.")
+        client = None
+        db = None
+        entries_collection = None
+
 
 # Configure CORS to allow all methods for all routes starting with '/'
 CORS(app, resources={
@@ -65,7 +78,7 @@ CORS(app, resources={
 
 # Function to insert data from nmr_database.json into MongoDB (one-time use if starting fresh)
 def insert_initial_data_from_json():
-    if db is None:
+    if entries_collection is None: # Check entries_collection directly
         logger.error("Database connection not established. Cannot insert initial data.")
         return
 
@@ -74,7 +87,6 @@ def insert_initial_data_from_json():
         with open(json_file_path, 'r') as f:
             initial_data = json.load(f)
 
-        entries_collection = db.entries # 'entries' will be the name of your collection
         # Check if collection is empty before inserting
         if entries_collection.count_documents({}) == 0:
             # Add 'id' field if not present, and ensure it's a string, important for updates/deletes later
@@ -83,6 +95,15 @@ def insert_initial_data_from_json():
                     entry['id'] = str(uuid.uuid4())
                 if 'created_at' not in entry:
                     entry['created_at'] = datetime.utcnow().isoformat()
+                # Ensure '_id' is not present to let MongoDB generate it, or convert if it's a string
+                if '_id' in entry and isinstance(entry['_id'], str):
+                    try:
+                        entry['_id'] = ObjectId(entry['_id']) # Convert to ObjectId if it's a valid ID string
+                    except:
+                        del entry['_id'] # If invalid string, remove to let MongoDB generate
+                elif '_id' in entry: # If it's something else, like None or non-string, remove
+                    del entry['_id']
+                
             entries_collection.insert_many(initial_data)
             logger.info(f"Inserted {len(initial_data)} initial entries from {json_file_path} into MongoDB.")
         else:
@@ -92,45 +113,56 @@ def insert_initial_data_from_json():
 
 # New functions to interact with MongoDB
 def get_all_entries():
-    if db is None:
+    if entries_collection is None: # Check entries_collection directly
         logger.error("Database connection not established. Cannot get entries.")
         return []
-    entries_collection = db.entries
     # Convert _id (ObjectId from MongoDB) to string for JSON serialization
     return [{**entry, '_id': str(entry['_id'])} for entry in entries_collection.find({})]
 
 def find_entry_by_id(entry_id):
-    if db is None:
+    if entries_collection is None: # Check entries_collection directly
         logger.error("Database connection not established. Cannot find entry by ID.")
         return None
-    entries_collection = db.entries
-    # Query using the 'id' field which we control, not MongoDB's '_id'
+    # Query using the 'id' field which we control (your UUID), not MongoDB's '_id'
     entry = entries_collection.find_one({'id': str(entry_id)})
     return {**entry, '_id': str(entry['_id'])} if entry else None
 
 def add_entry(entry):
-    if db is None:
+    if entries_collection is None: # Check entries_collection directly
         logger.error("Database connection not established. Cannot add entry.")
         return None
-    entries_collection = db.entries
     if 'id' not in entry or not entry['id']:
         entry['id'] = str(uuid.uuid4()) # Generate unique ID if not provided
     entry['created_at'] = datetime.utcnow().isoformat()
     # Add 'updated_at' if not present (e.g., when adding a new entry for the first time)
     if 'updated_at' not in entry:
         entry['updated_at'] = datetime.utcnow().isoformat()
+    
+    # Ensure MongoDB's _id is handled correctly (let MongoDB generate if not provided/valid)
+    if '_id' in entry:
+        if isinstance(entry['_id'], str):
+            try:
+                entry['_id'] = ObjectId(entry['_id'])
+            except:
+                del entry['_id'] # Invalid string, let MongoDB generate
+        else:
+            del entry['_id'] # Remove if not a string or ObjectId
+
     result = entries_collection.insert_one(entry)
     if result.inserted_id:
-        logger.info(f"Added new entry with ID: {entry['id']}")
+        logger.info(f"Added new entry with ID: {entry['id']} (MongoDB _id: {result.inserted_id})")
         return entry['id']
-    logger.error(f"Failed to add entry {entry['id']}.")
+    logger.error(f"Failed to add entry {entry.get('id', 'N/A')}.")
     return None
 
 def update_entry(entry_id, updated_data):
-    if db is None:
+    if entries_collection is None: # Check entries_collection directly
         logger.error("Database connection not established. Cannot update entry.")
         return False
-    entries_collection = db.entries
+    
+    # Remove MongoDB's _id field if present in updated_data, as it cannot be changed
+    updated_data.pop('_id', None)
+    
     updated_data['updated_at'] = datetime.utcnow().isoformat()
     result = entries_collection.update_one({'id': str(entry_id)}, {'$set': updated_data})
     if result.modified_count > 0:
@@ -140,10 +172,9 @@ def update_entry(entry_id, updated_data):
     return False
 
 def delete_entry(entry_id):
-    if db is None:
+    if entries_collection is None: # Check entries_collection directly
         logger.error("Database connection not established. Cannot delete entry.")
         return False
-    entries_collection = db.entries
     result = entries_collection.delete_one({'id': str(entry_id)})
     if result.deleted_count > 0:
         logger.info(f"Deleted entry with ID: {entry_id}")
@@ -152,7 +183,7 @@ def delete_entry(entry_id):
     return False
 
 def _clean_entry(entry):
-    """Clean entry for API response by removing internal DataFrame fields."""
+    """Clean entry for API response by removing internal DataFrame fields and _id."""
     if not isinstance(entry, dict):
         return {}
 
@@ -161,33 +192,66 @@ def _clean_entry(entry):
     for peak_type in ['hsqc', 'cosy', 'hmbc']:
         # The .pop(key, None) safely removes the key if it exists
         cleaned.pop(f'{peak_type}_peaks_parsed', None)
+    
+    # Remove MongoDB's internal _id if it's still there after conversion to string
+    cleaned.pop('_id', None) 
+    
     return cleaned
 
 def _to_json_serializable(obj):
     """Recursively convert DataFrame objects within a dictionary or list to a JSON-serializable format."""
     # Check if pandas is imported and obj is a DataFrame
     if 'pd' in globals() and isinstance(obj, pd.DataFrame):
-        return obj.to_dict(orient='split')  # More robust serialization
+        # Convert DataFrame to a list of dicts for JSON serialization
+        return obj.to_dict(orient='records')  
     elif isinstance(obj, dict):
-        return {k: _to_json_serializable(v) for k, v in obj.items()}
+        # Ensure _id is converted to string or removed if not needed
+        cleaned_dict = {}
+        for k, v in obj.items():
+            if k == '_id':
+                cleaned_dict[k] = str(v) # Convert ObjectId to string
+            else:
+                cleaned_dict[k] = _to_json_serializable(v)
+        return cleaned_dict
     elif isinstance(obj, list):
         return [_to_json_serializable(elem) for elem in obj]
     else:
         return obj
 
+# --- API Endpoints ---
 @app.route('/')
 def serve_index():
-    return send_from_directory('.', 'index.html')
+    try:
+        return send_from_directory('.', 'index.html')
+    except Exception as e:
+        logger.error(f"Error serving index.html: {e}")
+        return "Error loading page.", 500
+
+@app.route('/structures')
+def serve_structures():
+    try:
+        return send_from_directory('.', 'structures.html')
+    except Exception as e:
+        logger.error(f"Error serving structures.html: {e}")
+        return "Error loading structures page.", 500
+
+@app.route('/analysis')
+def serve_analysis():
+    try:
+        return send_from_directory('.', 'analysis.html')
+    except Exception as e:
+        logger.error(f"Error serving analysis.html: {e}")
+        return "Error loading analysis page.", 500
 
 @app.route('/api/entries', methods=['GET', 'OPTIONS'])
-def get_entries():
+def get_entries_route(): # Renamed to avoid conflict with helper
     try:
         # For OPTIONS requests, just return 200 OK without parsing JSON
         if request.method == 'OPTIONS':
             return '', 200
 
         db_entries_from_mongo = get_all_entries() # Get all entries from MongoDB
-        search = request.args.get('search', '').lower()
+        search = request.args.get('search', '').lower() # This variable is unused in the provided logic
         name_search = request.args.get('nameSearch', '').lower()
         peak_type = request.args.get('peakType', 'all')
         
@@ -202,10 +266,12 @@ def get_entries():
                 
             # Filter by peak type if specified
             if peak_type != 'all':
-                peak_key = f'{peak_type}_peaks'
-                if not entry.get(peak_key):
+                peak_key = f'{peak_type}_peaks' # This assumes your frontend passes e.g., 'hsqc_peaks'
+                # Better check if the *parsed* peaks exist and are not empty
+                parsed_peak_key = f'{peak_type}_peaks_parsed'
+                if not entry.get(parsed_peak_key) or entry.get(parsed_peak_key).empty: # Check if DataFrame is empty
                     continue
-            
+                
             filtered.append(_clean_entry(entry))
             
         return jsonify({
@@ -214,14 +280,14 @@ def get_entries():
             'count': len(filtered)
         })
     except Exception as e:
-        logger.error(f"Error in get_entries: {str(e)}")
+        logger.error(f"Error in get_entries_route: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-@app.route('/api/entries/<int:entry_id>', methods=['GET', 'OPTIONS'])
-def get_entry(entry_id):
+@app.route('/api/entries/<string:entry_id>', methods=['GET', 'OPTIONS']) # Changed to string for UUID
+def get_entry_route(entry_id): # Renamed to avoid conflict with helper function name
     try:
         # For OPTIONS requests, just return 200 OK without parsing JSON
         if request.method == 'OPTIONS':
@@ -240,7 +306,7 @@ def get_entry(entry_id):
             'error': 'Entry not found'
         }), 404
     except Exception as e:
-        logger.error(f"Error in get_entry: {str(e)}")
+        logger.error(f"Error in get_entry_route: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -286,7 +352,8 @@ def add_entry_route(): # Renamed to avoid conflict with helper function name
             if peak_type in data:
                 try:
                     parsed = detector.parse_peak_data(data[peak_type], peak_type)
-                    data[f'{peak_type}_peaks_parsed'] = parsed
+                    # Convert DataFrame to list of dicts for JSON/MongoDB storage
+                    data[f'{peak_type}_peaks_parsed'] = parsed.to_dict(orient='records') if not parsed.empty else []
                 except Exception as e:
                     logger.error(f"Error parsing {peak_type} peaks: {str(e)}")
                     return jsonify({
@@ -294,8 +361,8 @@ def add_entry_route(): # Renamed to avoid conflict with helper function name
                         'error': f'Error parsing {peak_type.upper()} peaks: {str(e)}'
                     }), 400
             else:
-                # Ensure parsed key exists even if no raw data provided, as an empty DataFrame
-                data[f'{peak_type}_peaks_parsed'] = pd.DataFrame()
+                # Ensure parsed key exists even if no raw data provided, as an empty list
+                data[f'{peak_type}_peaks_parsed'] = []
 
         # Use the new MongoDB add_entry helper function to save the data
         new_id = add_entry(data)
@@ -320,7 +387,7 @@ def add_entry_route(): # Renamed to avoid conflict with helper function name
             'error': str(e)
         }), 500
 
-@app.route('/api/entries/<int:entry_id>', methods=['PUT', 'OPTIONS'])
+@app.route('/api/entries/<string:entry_id>', methods=['PUT', 'OPTIONS']) # Changed to string for UUID
 def update_entry_route(entry_id): # Renamed to avoid conflict with helper function name
     try:
         # For OPTIONS requests, just return 200 OK without parsing JSON
@@ -344,20 +411,18 @@ def update_entry_route(entry_id): # Renamed to avoid conflict with helper functi
             if peak_type in data: # Check if raw peaks were sent in the update request
                 try:
                     parsed = detector.parse_peak_data(data[peak_type], peak_type)
-                    data[f'{peak_type}_peaks_parsed'] = parsed
+                    # Convert DataFrame to list of dicts for JSON/MongoDB storage
+                    data[f'{peak_type}_peaks_parsed'] = parsed.to_dict(orient='records') if not parsed.empty else []
                 except Exception as e:
                     logger.error(f"Error parsing {peak_type} peaks: {str(e)}")
                     return jsonify({
                         'success': False,
                         'error': f'Error parsing {peak_type.upper()} peaks: {str(e)}'
                     }), 400
-            elif f'{peak_type}_peaks_parsed' not in data:
-                # If raw peaks not updated and parsed peaks not in the new data,
-                # fetch existing entry to decide if _peaks_parsed should be kept or set to empty.
-                # Simplified: if not in data, assume no update to peaks, keep existing or leave as is.
-                # The update_entry helper will handle merging if a key isn't explicitly set.
-                pass # No action needed here, let the $set in update_entry handle it.
-
+            # If peak_type not in data, but parsed data IS in the request, keep it as is.
+            # If neither is in data, it means no update for this peak type, so the existing value in DB will remain.
+            # The '$set' operator only updates provided fields.
+            
         # Use the new MongoDB update_entry helper function
         if update_entry(entry_id, data):
             # Fetch the updated entry to return it in the response
@@ -379,7 +444,7 @@ def update_entry_route(entry_id): # Renamed to avoid conflict with helper functi
             'error': str(e)
         }), 500
 
-@app.route('/api/entries/<int:entry_id>', methods=['DELETE', 'OPTIONS'])
+@app.route('/api/entries/<string:entry_id>', methods=['DELETE', 'OPTIONS']) # Changed to string for UUID
 def delete_entry_route(entry_id): # Renamed to avoid conflict with helper function name
     try:
         # For OPTIONS requests, just return 200 OK without parsing JSON
@@ -422,8 +487,21 @@ def analyze_nmr():
         logger.debug(f"Running analysis with data: {data}")
         
         # Use the new MongoDB helper function to get all entries
-        db_entries_from_mongo = get_all_entries() 
-        
+        # Ensure that parsed DataFrames are converted back to DataFrame objects
+        # before passing to detector.run_analysis
+        all_database_entries_raw = get_all_entries()
+        all_database_entries_parsed = []
+        for entry in all_database_entries_raw:
+            entry_copy = entry.copy() # Avoid modifying original fetched dict
+            for peak_type in ['hsqc', 'cosy', 'hmbc']:
+                parsed_key = f'{peak_type}_peaks_parsed'
+                if parsed_key in entry_copy and isinstance(entry_copy[parsed_key], list):
+                    # Convert list of dicts back to DataFrame
+                    entry_copy[parsed_key] = pd.DataFrame(entry_copy[parsed_key])
+                else:
+                    entry_copy[parsed_key] = pd.DataFrame() # Ensure it's always a DataFrame
+            all_database_entries_parsed.append(entry_copy)
+
         # --- CHANGE START: Get tolerances from request or use defaults ---
         tolerance_h = data.get('toleranceH', TOLERANCE_H_MATCH)
         tolerance_c = data.get('toleranceC', TOLERANCE_C_MATCH)
@@ -438,7 +516,7 @@ def analyze_nmr():
             data.get('hsqc_peaks', ''),
             data.get('cosy_peaks', ''),
             data.get('hmbc_peaks', ''),
-            db_entries_from_mongo, # Use the entries from MongoDB
+            all_database_entries_parsed, # Use the parsed entries from MongoDB
             tolerance_h,
             tolerance_c
         )
@@ -452,16 +530,29 @@ def analyze_nmr():
         )
 
         # --- CHANGE START: Clean compound data before sending response ---
-        for result_entry in results.get('detected_entries', []):
-            if 'compound' in result_entry and isinstance(result_entry['compound'], dict):
-                result_entry['compound'] = _clean_entry(result_entry['compound'])
-        # --- CHANGE END ---
+        # Ensure that `compound` field within detected_entries is also cleaned of ObjectId
+        # and parsed DataFrames are converted to list of dicts for JSON
+        def _recursive_clean_for_json(obj):
+            if isinstance(obj, dict):
+                cleaned = {}
+                for k, v in obj.items():
+                    if k == '_id': # Skip _id as it's an internal MongoDB field
+                        continue
+                    elif k.endswith('_peaks_parsed') and isinstance(v, pd.DataFrame):
+                        cleaned[k] = v.to_dict(orient='records') # Convert DataFrame to list of dicts
+                    else:
+                        cleaned[k] = _recursive_clean_for_json(v)
+                return cleaned
+            elif isinstance(obj, list):
+                return [_recursive_clean_for_json(elem) for elem in obj]
+            return obj
 
-        # Apply the recursive cleaning function to the results dictionary
-        cleaned_results = _to_json_serializable({
+        # Apply _recursive_clean_for_json to the results dictionary
+        cleaned_results = _recursive_clean_for_json({
             'detected_entries': results['detected_entries'],
             'unmatched_sample_peaks': results['unmatched_sample_peaks'],
         })
+        # --- CHANGE END ---
         
         return jsonify({
             'success': True,
@@ -479,9 +570,13 @@ def analyze_nmr():
         }), 500
 
 if __name__ == '__main__':
-    logger.info(f"Starting NMR Structure Database server on http://127.0.0.1:5000/")
+    logger.info(f"Starting NMR Structure Database server...")
     
     # Call the function to insert initial data from JSON if the collection is empty
+    # This should run only ONCE, on the very first successful deploy to an empty DB.
+    # You might want to comment this out after the initial data is in MongoDB.
     insert_initial_data_from_json()
     
-    app.run(debug=True, host='0.0.0.0')
+    # Render automatically sets the PORT environment variable
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False) # debug=True is not recommended for production
