@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NMR Structure Database - Add/Edit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        textarea {
+            min-height: 120px;
+            font-family: monospace;
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 800px;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .loading .loading-spinner {
+            display: inline-block;
+        }
+        #imagePreview {
+            /* Removed max-height: 200px; */
+            display: none;
+        }
+        #imagePreview img {
+            max-height: 100%; /* Changed from max-height to height to better control and prevent overflow */
+            width: auto;
+            max-width: 100%; /* Ensure image fits container */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-10">NMR Structure Database</h1>
+
+        <div id="message" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline" id="message-text"></span>
+            <span class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer" onclick="document.getElementById('message').classList.add('hidden')">
+                <svg class="fill-current h-6 w-6 text-green-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.15a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697L11.819 10l3.029 2.651a1.2 1.2 0 0 1 0 1.698z"/></svg>
+            </span>
+        </div>
+
+        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline" id="error-message-text"></span>
+            <span class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer" onclick="document.getElementById('error-message').classList.add('hidden')">
+                <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.15a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697L11.819 10l3.029 2.651a1.2 1.2 0 0 1 0 1.698z"/></svg>
+            </span>
+        </div>
+
+        <div class="flex justify-center mb-8">
+            <a href="index.html" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 mx-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add/Edit Structures
+            </a>
+            <a href="structures.html" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-800 transition duration-300 mx-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                View/Search Structures
+            </a>
+            <a href="analysis.html" class="bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-teal-700 transition duration-300 mx-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 21h18" />
+                </svg>
+                Analyze NMR Data
+            </a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <button id="toggleFormBtn" class="bg-blue-600 text-white py-3 px-6 rounded-lg shadow hover:bg-blue-700 transition duration-300 flex items-center justify-center w-full">
+                <svg id="plusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <svg id="minusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" />
+                </svg>
+                <span id="buttonText">Add New Structure</span>
+            </button>
+
+            <button id="viewAllBtn" class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 w-full">
+                View All Structures
+            </button>
+
+            <form id="nmrEntryForm" class="space-y-6 mt-6 hidden">
+                <input type="hidden" id="entryId">
+                
+                <div>
+                    <label for="nameInput" class="block text-sm font-medium text-gray-700">Structure Name *</label>
+                    <input type="text" id="nameInput" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                </div>
+
+                <div class="mb-6"> 
+                    <label class="block text-sm font-medium text-gray-700">Structure Image</label>
+                    <div class="mt-2 flex items-center">
+                        <label for="imageUpload" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Choose Image
+                        </label>
+                        <span id="imageFileName" class="ml-2 text-sm text-gray-500">No image selected</span>
+                    </div>
+                    <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                    <div id="imagePreview" class="mt-2">
+                        <img id="previewImage" class="max-h-40 rounded border border-gray-200">
+                    </div>
+                    <input type="hidden" id="structureImage">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="hsqcPeaks" class="block text-sm font-medium text-gray-700">HSQC Peaks (1H, 13C)</label>
+                        <textarea id="hsqcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift (one peak per line)</p>
+                    </div>
+                    <div>
+                        <label for="cosyPeaks" class="block text-sm font-medium text-gray-700">COSY Peaks (1H, 1H)</label>
+                        <textarea id="cosyPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 7.26&#10;5.12 3.45&#10;..."></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Format: 1H_shift1 1H_shift2 (one peak per line)</p>
+                    </div>
+                    <div>
+                        <label for="hmbcPeaks" class="block text-sm font-medium text-gray-700">HMBC Peaks (1H, 13C)</label>
+                        <textarea id="hmbcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift (one peak per line)</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="clearForm()" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                        Clear Form
+                    </button>
+                    <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
+                        <span id="submitText">Save Structure</span>
+                        <span id="submitSpinner" class="loading-spinner ml-2 animate-spin inline-block w-4 h-4 border-2 border-t-2 border-t-white border-indigo-200 rounded-full"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="viewAllModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">All Structures</h2>
+                <button onclick="closeViewAllModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                    &times;
+                </button>
+            </div>
+            <div id="allStructuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api/entries';
+        
+        // DOM Elements
+        const viewAllBtn = document.getElementById('viewAllBtn');
+        const viewAllModal = document.getElementById('viewAllModal');
+        const allStructuresContainer = document.getElementById('allStructuresContainer');
+        const nmrEntryForm = document.getElementById('nmrEntryForm');
+        const toggleFormBtn = document.getElementById('toggleFormBtn');
+        const plusIcon = document.getElementById('plusIcon');
+        const minusIcon = document.getElementById('minusIcon');
+        const buttonText = document.getElementById('buttonText');
+        const submitBtn = document.querySelector('#nmrEntryForm button[type="submit"]');
+        const submitSpinner = document.getElementById('submitSpinner');
+        const submitText = document.getElementById('submitText');
+        const imageUpload = document.getElementById('imageUpload');
+        const imageFileName = document.getElementById('imageFileName');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImage = document.getElementById('previewImage');
+
+        // Form elements
+        const entryIdInput = document.getElementById('entryId');
+        const nameInput = document.getElementById('nameInput');
+        const hsqcPeaks = document.getElementById('hsqcPeaks');
+        const cosyPeaks = document.getElementById('cosyPeaks');
+        const hmbcPeaks = document.getElementById('hmbcPeaks');
+        const structureImage = document.getElementById('structureImage');
+
+        // Image upload handler
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                showMessage('Image size must be less than 2MB', true);
+                return;
+            }
+
+            imageFileName.textContent = file.name;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                previewImage.src = event.target.result;
+                imagePreview.style.display = 'block';
+                structureImage.value = event.target.result;
+            };
+            
+            if (file.type.match('image.*')) {
+                reader.readAsDataURL(file);
+            } else {
+                showMessage('Please select an image file (JPG, PNG, GIF)', true);
+            }
+        });
+
+        // Toggle form visibility
+        toggleFormBtn.addEventListener('click', () => {
+            nmrEntryForm.classList.toggle('hidden');
+            plusIcon.classList.toggle('hidden');
+            minusIcon.classList.toggle('hidden');
+            buttonText.textContent = nmrEntryForm.classList.contains('hidden') ? 'Add New Structure' : 'Hide Form';
+        });
+
+        // View All Functionality
+        viewAllBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch(API_BASE_URL);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch structures');
+                }
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load structures');
+                }
+
+                const structures = result.data || [];
+                
+                if (structures.length === 0) {
+                    allStructuresContainer.innerHTML = '<p class="text-gray-600">No structures found in the database.</p>';
+                } else {
+                    allStructuresContainer.innerHTML = structures.map(structure => `
+                        <div class="border rounded-lg p-4 bg-white shadow-sm">
+                            <h3 class="font-bold text-lg">${structure.name || 'Unnamed Structure'}</h3>
+                            <p class="text-sm text-gray-600 mb-2">ID: ${structure.id}</p>
+                            ${structure.structure_image_base64 ? 
+                                `<img src="${structure.structure_image_base64}" alt="Structure Image" class="mt-2 mb-2 max-w-full h-auto rounded">` : 
+                                '<div class="bg-gray-200 h-32 flex items-center justify-center text-gray-500 mb-2">No Image</div>'}
+                            <div class="flex space-x-2">
+                                <button onclick="loadStructureForEdit(${structure.id})" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">
+                                    Edit
+                                </button>
+                                <button onclick="deleteStructure(${structure.id})" class="bg-red-500 text-white px-3 py-1 rounded text-sm">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                viewAllModal.classList.remove('hidden');
+            } catch (error) {
+                showMessage(`Error loading structures: ${error.message}`, true);
+                console.error("Error loading structures:", error);
+            }
+        });
+
+        function closeViewAllModal() {
+            viewAllModal.classList.add('hidden');
+        }
+
+        function loadStructureForEdit(structureId) {
+            fetch(`${API_BASE_URL}/${structureId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(result => {
+                    if (!result.success) {
+                        throw new Error(result.error || 'Failed to load structure');
+                    }
+                    populateFormForEdit(result.data);
+                    closeViewAllModal();
+                    // Ensure form is visible
+                    nmrEntryForm.classList.remove('hidden');
+                    plusIcon.classList.add('hidden');
+                    minusIcon.classList.remove('hidden');
+                    buttonText.textContent = 'Hide Form';
+                })
+                .catch(error => {
+                    showMessage(`Error loading structure: ${error.message}`, true);
+                    console.error("Error loading structure:", error);
+                });
+        }
+
+        function populateFormForEdit(structureData) {
+            entryIdInput.value = structureData.id || '';
+            nameInput.value = structureData.name || '';
+            hsqcPeaks.value = structureData.hsqc_peaks || '';
+            cosyPeaks.value = structureData.cosy_peaks || '';
+            hmbcPeaks.value = structureData.hmbc_peaks || '';
+            
+            if (structureData.structure_image_base64) {
+                previewImage.src = structureData.structure_image_base64;
+                imagePreview.style.display = 'block';
+                structureImage.value = structureData.structure_image_base64;
+                imageFileName.textContent = 'Uploaded image';
+            } else {
+                imagePreview.style.display = 'none';
+                structureImage.value = '';
+                imageFileName.textContent = 'No image selected';
+            }
+        }
+
+        function clearForm() {
+            entryIdInput.value = '';
+            nameInput.value = '';
+            hsqcPeaks.value = '';
+            cosyPeaks.value = '';
+            hmbcPeaks.value = '';
+            structureImage.value = '';
+            imageUpload.value = '';
+            imageFileName.textContent = 'No image selected';
+            imagePreview.style.display = 'none';
+        }
+
+        function deleteStructure(structureId) {
+            if (!confirm(`Are you sure you want to delete structure ID ${structureId}?`)) {
+                return;
+            }
+            
+            fetch(`${API_BASE_URL}/${structureId}`, {
+                method: 'DELETE'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    showMessage(result.message || 'Structure deleted successfully');
+                    // Refresh the view
+                    viewAllBtn.click();
+                } else {
+                    throw new Error(result.error || 'Failed to delete structure');
+                }
+            })
+            .catch(error => {
+                showMessage(`Error deleting structure: ${error.message}`, true);
+                console.error("Error deleting structure:", error);
+            });
+        }
+
+        // Form submission
+        nmrEntryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!nameInput.value.trim()) {
+                showMessage('Structure name is required', true);
+                return;
+            }
+
+            const formData = {
+                name: nameInput.value.trim(),
+                hsqc_peaks: hsqcPeaks.value.trim(),
+                cosy_peaks: cosyPeaks.value.trim(),
+                hmbc_peaks: hmbcPeaks.value.trim(),
+                structure_image_base64: structureImage.value.trim()
+            };
+
+            // If we have an ID, we're updating an existing entry
+            const entryId = entryIdInput.value;
+            const method = entryId ? 'PUT' : 'POST';
+            const url = entryId ? `${API_BASE_URL}/${entryId}` : API_BASE_URL;
+
+            try {
+                // Show loading state
+                submitBtn.disabled = true;
+                submitSpinner.classList.remove('loading-spinner');
+                submitText.textContent = entryId ? 'Updating...' : 'Saving...';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Request failed');
+                }
+
+                if (result.success) {
+                    showMessage(result.message || (entryId ? 'Structure updated successfully' : 'Structure added successfully'));
+                    clearForm();
+                    if (!entryId) {
+                        // If this was a new entry, update the ID field for potential edits
+                        entryIdInput.value = result.data?.id || '';
+                    }
+                } else {
+                    throw new Error(result.error || 'Operation failed');
+                }
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, true);
+                console.error("Error submitting form:", error);
+            } finally {
+                // Reset button state
+                submitBtn.disabled = false;
+                submitSpinner.classList.add('loading-spinner');
+                submitText.textContent = entryId ? 'Update Structure' : 'Save Structure';
+            }
+        });
+
+        // Close modal when clicking outside
+        viewAllModal.addEventListener('click', (e) => {
+            if (e.target === viewAllModal) {
+                closeViewAllModal();
+            }
+        });
+
+        function showMessage(message, isError = false) {
+            const messageDiv = isError ? document.getElementById('error-message') : document.getElementById('message');
+            const textSpan = isError ? document.getElementById('error-message-text') : document.getElementById('message-text');
+            
+            textSpan.textContent = message;
+            messageDiv.classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                messageDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for edit ID in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('editId');
+            
+            if (editId) {
+                loadStructureForEdit(editId);
+                nmrEntryForm.classList.remove('hidden');
+                plusIcon.classList.add('hidden');
+                minusIcon.classList.remove('hidden');
+                buttonText.textContent = 'Hide Form';
+            }
+            
+            // Hide image preview initially
+            imagePreview.style.display = 'none';
+        });
+    </script>
+</body>
+</html>

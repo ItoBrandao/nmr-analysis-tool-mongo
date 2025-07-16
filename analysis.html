@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NMR Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        textarea {
+            min-height: 120px;
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .spectrum-plot {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <div class="container mx-auto p-6">
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-4xl font-extrabold text-gray-800">NMR Analysis</h1>
+            <nav>
+                <a href="index.html" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                    Add/Edit Structures
+                </a>
+                <a href="structures.html" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ml-3">
+                    View All Structures
+                </a>
+            </nav>
+        </header>
+
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Sample Peak Data</h2>
+                <div class="mb-4">
+                    <label for="hsqcPeaks" class="block text-sm font-medium text-gray-700 mb-1">HSQC Peaks (H C [Intensity])</label>
+                    <textarea id="hsqcPeaks" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 0.9 14&#10;1.3 23.4"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label for="cosyPeaks" class="block text-sm font-medium text-gray-700 mb-1">COSY Peaks (H1 H2 [Intensity])</label>
+                    <textarea id="cosyPeaks" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 0.9 1.3&#10;1.3 1.5"></textarea>
+                </div>
+                <div class="mb-4">
+                    <label for="hmbcPeaks" class="block text-sm font-medium text-gray-700 mb-1">HMBC Peaks (H C [Intensity])</label>
+                    <textarea id="hmbcPeaks" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., 0.9 23.4&#10;1.5 35.0"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="hTolerance" class="block text-sm font-medium text-gray-700 mb-1">1H Tolerance (ppm)</label>
+                    <input type="number" id="hTolerance" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="0.05" step="0.01" min="0.01" max="1.0">
+                </div>
+                <div class="mb-4">
+                    <label for="cTolerance" class="block text-sm font-medium text-gray-700 mb-1">13C Tolerance (ppm)</label>
+                    <input type="number" id="cTolerance" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="0.50" step="0.1" min="0.1" max="5.0">
+                </div>
+                
+                <div class="mb-6">
+                    <label for="contourLevels" class="block text-sm font-medium text-gray-700 mb-1">Number of Contour Levels</label>
+                    <input type="number" id="contourLevels" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" value="15" min="1" max="50">
+                </div>
+                <button id="runAnalysisBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                    Run Analysis
+                </button>
+                <div id="loadingMessage" class="hidden mt-4 text-center text-indigo-700 font-medium">
+                    <div class="animate-spin inline-block w-6 h-6 border-4 border-t-transparent border-indigo-500 rounded-full"></div>
+                    Analyzing...
+                </div>
+                <div id="errorMessage" class="hidden mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <span id="errorMessageText" class="block sm:inline"></span>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Analysis Results</h2>
+                <div class="mb-4">
+                    <h3 class="text-xl font-medium text-gray-600 mb-2">Detected Matches</h3>
+                    <div id="matchesList" class="space-y-4">
+                        <p class="text-gray-600">Enter peak data and run analysis.</p>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h3 class="text-xl font-medium text-gray-600 mb-2">Unmatched Sample Peaks</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">HSQC:</p>
+                            <pre id="unmatchedHsqc" class="bg-gray-100 p-2 rounded-md text-sm text-gray-800 whitespace-pre-wrap"></pre>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">COSY:</p>
+                            <pre id="unmatchedCosy" class="bg-gray-100 p-2 rounded-md text-sm text-gray-800 whitespace-pre-wrap"></pre>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">HMBC:</p>
+                            <pre id="unmatchedHmbc" class="bg-gray-100 p-2 rounded-md text-sm text-gray-800 whitespace-pre-wrap"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Spectrum Plots</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="flex flex-col items-center">
+                        <h3 class="text-lg font-medium text-gray-600 mb-2">HSQC Spectrum</h3>
+                        <img id="hsqcPlot" src="" alt="HSQC Spectrum" class="spectrum-plot hidden">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <h3 class="text-lg font-medium text-gray-600 mb-2">COSY Spectrum</h3>
+                        <img id="cosyPlot" src="" alt="COSY Spectrum" class="spectrum-plot hidden">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <h3 class="text-lg font-medium text-gray-600 mb-2">HMBC Spectrum</h3>
+                        <img id="hmbcPlot" src="" alt="HMBC Spectrum" class="spectrum-plot hidden">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const hsqcPeaksInput = document.getElementById('hsqcPeaks');
+        const cosyPeaksInput = document.getElementById('cosyPeaks');
+        const hmbcPeaksInput = document.getElementById('hmbcPeaks');
+        const contourLevelsInput = document.getElementById('contourLevels');
+        const hToleranceInput = document.getElementById('hTolerance');
+        const cToleranceInput = document.getElementById('cTolerance');
+        const runAnalysisBtn = document.getElementById('runAnalysisBtn');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorMessageText = document.getElementById('errorMessageText');
+        const matchesList = document.getElementById('matchesList');
+        const unmatchedHsqc = document.getElementById('unmatchedHsqc');
+        const unmatchedCosy = document.getElementById('unmatchedCosy');
+        const unmatchedHmbc = document.getElementById('unmatchedHmbc');
+        const hsqcPlot = document.getElementById('hsqcPlot');
+        const cosyPlot = document.getElementById('cosyPlot');
+        const hmbcPlot = document.getElementById('hmbcPlot');
+
+        runAnalysisBtn.addEventListener('click', runAnalysis);
+
+        async function runAnalysis() {
+            loadingMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            matchesList.innerHTML = '';
+            hsqcPlot.classList.add('hidden');
+            cosyPlot.classList.add('hidden');
+            hmbcPlot.classList.add('hidden');
+            unmatchedHsqc.textContent = '';
+            unmatchedCosy.textContent = '';
+            unmatchedHmbc.textContent = '';
+
+            const hsqcPeaks = hsqcPeaksInput.value;
+            const cosyPeaks = cosyPeaksInput.value;
+            const hmbcPeaks = hmbcPeaksInput.value;
+            const contourLevels = parseInt(contourLevelsInput.value, 10);
+            const hTolerance = parseFloat(hToleranceInput.value);
+            const cTolerance = parseFloat(cToleranceInput.value);
+
+            if (isNaN(contourLevels) || contourLevels < 1 || contourLevels > 50) {
+                errorMessageText.textContent = 'Please enter a valid number of contour levels (1-50).';
+                errorMessage.classList.remove('hidden');
+                loadingMessage.classList.add('hidden');
+                return;
+            }
+
+            if (isNaN(hTolerance) || hTolerance < 0.01 || hTolerance > 1.0) {
+                errorMessageText.textContent = 'Please enter a valid 1H tolerance (0.01-1.0 ppm).';
+                errorMessage.classList.remove('hidden');
+                loadingMessage.classList.add('hidden');
+                return;
+            }
+
+            if (isNaN(cTolerance) || cTolerance < 0.1 || cTolerance > 5.0) {
+                errorMessageText.textContent = 'Please enter a valid 13C tolerance (0.1-5.0 ppm).';
+                errorMessage.classList.remove('hidden');
+                loadingMessage.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch('/run-analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        hsqc_peaks: hsqcPeaks,
+                        cosy_peaks: cosyPeaks,
+                        hmbc_peaks: hmbcPeaks,
+                        num_contour_levels: contourLevels,
+                        toleranceH: hTolerance,
+                        toleranceC: cTolerance
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to perform analysis.');
+                }
+
+                const results = await response.json();
+                console.log('API Response:', results); // Debugging line
+
+                // Display spectrum plots
+                if (results.hsqc_image_base64) {
+                    hsqcPlot.src = `data:image/png;base64,${results.hsqc_image_base64}`;
+                    hsqcPlot.classList.remove('hidden');
+                }
+                if (results.cosy_image_base64) {
+                    cosyPlot.src = `data:image/png;base64,${results.cosy_image_base64}`;
+                    cosyPlot.classList.remove('hidden');
+                }
+                if (results.hmbc_image_base64) {
+                    hmbcPlot.src = `data:image/png;base64,${results.hmbc_image_base64}`;
+                    hmbcPlot.classList.remove('hidden');
+                }
+
+                // Display detected matches
+                if (results.detected_entries && results.detected_entries.length > 0) {
+                    matchesList.innerHTML = '';
+                    results.detected_entries.forEach(entry => {
+                        const entryDiv = document.createElement('div');
+                        entryDiv.className = 'bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-center space-x-4';
+                        
+                        // Access the compound data correctly - checking both locations
+                        const compound = entry.compound || entry || {};
+                        const compoundName = compound.name || 'Unnamed Structure';
+                        const matchScore = (entry.match_score * 100).toFixed(1);
+                        const entryId = compound.id || '';
+                        
+                        // Handle image data - check for both full URLs and raw base64
+                        let structureImage = '';
+                        if (compound.structure_image_base64) {
+                            if (compound.structure_image_base64.startsWith('data:image')) {
+                                structureImage = compound.structure_image_base64;
+                            } else {
+                                structureImage = `data:image/png;base64,${compound.structure_image_base64}`;
+                            }
+                        }
+
+                        // Calculate individual percentages
+                        const hsqcPercentage = entry.details?.hsqc_percentage ? (entry.details.hsqc_percentage * 100).toFixed(1) : 'N/A';
+                        const cosyPercentage = entry.details?.cosy_percentage ? (entry.details.cosy_percentage * 100).toFixed(1) : 'N/A';
+                        const hmbcPercentage = entry.details?.hmbc_percentage ? (entry.details.hmbc_percentage * 100).toFixed(1) : 'N/A';
+
+                        entryDiv.innerHTML = `
+                            ${structureImage ? 
+                                `<img src="${structureImage}" alt="${compoundName}" class="w-16 h-16 object-contain rounded-md">` : 
+                                '<div class="w-16 h-16 flex items-center justify-center bg-gray-200 rounded-md text-gray-500 text-xs text-center">No Image</div>'
+                            }
+                            <div class="flex-grow">
+                                <h4 class="font-semibold text-gray-800">${compoundName}</h4>
+                                <p class="text-sm text-gray-600">Overall Match: <span class="font-semibold">${matchScore}%</span></p>
+                                <div class="grid grid-cols-3 gap-2 mt-1">
+                                    <div>
+                                        <p class="text-xs font-semibold text-gray-700">HSQC</p>
+                                        <p class="text-xs">${entry.details?.hsqc_matches || 'N/A'}</p>
+                                        <p class="text-xs font-semibold text-indigo-600">${hsqcPercentage}%</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold text-gray-700">COSY</p>
+                                        <p class="text-xs">${entry.details?.cosy_matches || 'N/A'}</p>
+                                        <p class="text-xs font-semibold text-indigo-600">${cosyPercentage}%</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-semibold text-gray-700">HMBC</p>
+                                        <p class="text-xs">${entry.details?.hmbc_matches || 'N/A'}</p>
+                                        <p class="text-xs font-semibold text-indigo-600">${hmbcPercentage}%</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex-shrink-0">
+                                <a href="index.html?editId=${entryId}" target="_blank" class="text-indigo-600 hover:text-indigo-800 text-sm">View Details</a>
+                            </div>
+                        `;
+                        matchesList.appendChild(entryDiv);
+                    });
+                } else {
+                    matchesList.innerHTML = '<p class="text-gray-600">No matches found in database.</p>';
+                }
+
+                // Display unmatched peaks
+                if (results.unmatched_sample_peaks) {
+                    unmatchedHsqc.textContent = results.unmatched_sample_peaks.hsqc && results.unmatched_sample_peaks.hsqc.length > 0
+                        ? results.unmatched_sample_peaks.hsqc.map(p => `${p[0]?.toFixed(2) || 'N/A'}, ${p[1]?.toFixed(2) || 'N/A'}`).join('\n')
+                        : 'None';
+                    
+                    unmatchedCosy.textContent = results.unmatched_sample_peaks.cosy && results.unmatched_sample_peaks.cosy.length > 0
+                        ? results.unmatched_sample_peaks.cosy.map(p => `${p[0]?.toFixed(2) || 'N/A'}, ${p[1]?.toFixed(2) || 'N/A'}`).join('\n')
+                        : 'None';
+                    
+                    unmatchedHmbc.textContent = results.unmatched_sample_peaks.hmbc && results.unmatched_sample_peaks.hmbc.length > 0
+                        ? results.unmatched_sample_peaks.hmbc.map(p => `${p[0]?.toFixed(2) || 'N/A'}, ${p[1]?.toFixed(2) || 'N/A'}`).join('\n')
+                        : 'None';
+                } else {
+                    unmatchedHsqc.textContent = 'None';
+                    unmatchedCosy.textContent = 'None';
+                    unmatchedHmbc.textContent = 'None';
+                }
+
+            } catch (error) {
+                errorMessageText.textContent = `Error: ${error.message}`;
+                errorMessage.classList.remove('hidden');
+            } finally {
+                loadingMessage.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

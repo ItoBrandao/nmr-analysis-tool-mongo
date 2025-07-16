@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NMR Structures</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .peak-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background-color: #f8f8f8;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            max-height: 200px; /* Adjust as needed */
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+        }
+        .loading-spinner {
+            display: none;
+        }
+        .loading .loading-spinner {
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-10">NMR Structure Database</h1>
+
+        <div class="flex justify-center mb-8">
+            <a href="index.html" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 mx-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add/Edit Structures
+            </a>
+            <a href="structures.html" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-800 transition duration-300 mx-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                View/Search Structures
+            </a>
+            <a href="analysis.html" class="bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-teal-700 transition duration-300 mx-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 21h18" />
+                </svg>
+                Analyze NMR Data
+            </a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Search Structures</h2>
+            <div id="resultsMessage" class="hidden bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
+                <span class="block sm:inline" id="resultsMessageText"></span>
+                <span class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer" onclick="document.getElementById('resultsMessage').classList.add('hidden')">
+                    <svg class="fill-current h-6 w-6 text-blue-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.15a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697L11.819 10l3.029 2.651a1.2 1.2 0 0 1 0 1.698z"/></svg>
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="nameSearchInput" class="block text-sm font-medium text-gray-700">Search by Name</label>
+                    <input type="text" id="nameSearchInput" placeholder="Enter structure name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Search by Peak</label>
+                    <div class="mt-1 flex items-center space-x-2">
+                        <input type="text" id="peakSearchInput1" placeholder="1H Shift" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <input type="text" id="peakSearchInput2" placeholder="13C Shift (HSQC/HMBC)" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+                </div>
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700">Peak Type</label>
+                <div class="mt-1 flex space-x-4">
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="peakType" value="all" checked class="form-radio text-indigo-600">
+                        <span class="ml-2 text-gray-700">All</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="peakType" value="hsqc" class="form-radio text-indigo-600">
+                        <span class="ml-2 text-gray-700">HSQC</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="peakType" value="cosy" class="form-radio text-indigo-600">
+                        <span class="ml-2 text-gray-700">COSY</span>
+                    </label>
+                    <label class="inline-flex items-center">
+                        <input type="radio" name="peakType" value="hmbc" class="form-radio text-indigo-600">
+                        <span class="ml-2 text-gray-700">HMBC</span>
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button id="clearSearchButton" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                    Clear Filters
+                </button>
+                <button id="searchButton" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
+                    Search
+                    <span id="searchSpinner" class="loading-spinner ml-2 animate-spin inline-block w-4 h-4 border-2 border-t-2 border-t-white border-indigo-200 rounded-full"></span>
+                </button>
+            </div>
+        </div>
+
+        <div id="structuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+
+        <div id="noResults" class="hidden text-center text-gray-600 mt-8">
+            <p class="text-lg">No structures found matching your criteria.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api/entries';
+
+        // DOM Elements
+        const structuresContainer = document.getElementById('structuresContainer');
+        const noResultsMessage = document.getElementById('noResults');
+        const searchButton = document.getElementById('searchButton');
+        const clearSearchButton = document.getElementById('clearSearchButton');
+        const nameSearchInput = document.getElementById('nameSearchInput');
+        const peakSearchInput1 = document.getElementById('peakSearchInput1'); // New
+        const peakSearchInput2 = document.getElementById('peakSearchInput2'); // New
+        const peakTypeRadios = document.querySelectorAll('input[name="peakType"]'); // New
+        const searchSpinner = document.getElementById('searchSpinner');
+        const resultsMessageDiv = document.getElementById('resultsMessage');
+        const resultsMessageText = document.getElementById('resultsMessageText');
+
+        // Function to show/hide loading spinner
+        function showLoading(isLoading) {
+            if (isLoading) {
+                searchButton.classList.add('loading');
+                searchButton.disabled = true;
+            } else {
+                searchButton.classList.remove('loading');
+                searchButton.disabled = false;
+            }
+        }
+
+        function showResultsMessage(message, isError = false) {
+            resultsMessageText.textContent = message;
+            resultsMessageDiv.classList.remove('hidden');
+            if (isError) {
+                resultsMessageDiv.classList.remove('bg-blue-100', 'border-blue-400', 'text-blue-700');
+                resultsMessageDiv.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
+            } else {
+                resultsMessageDiv.classList.remove('bg-red-100', 'border-red-400', 'text-red-700');
+                resultsMessageDiv.classList.add('bg-blue-100', 'border-blue-400', 'text-blue-700');
+            }
+            setTimeout(() => {
+                resultsMessageDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        async function fetchEntries(peakSearch1 = '', peakSearch2 = '', peakType = 'all', nameSearchTerm = '') {
+            showLoading(true);
+            structuresContainer.innerHTML = ''; // Clear previous results
+            noResultsMessage.classList.add('hidden'); // Hide no results message initially
+            resultsMessageDiv.classList.add('hidden'); // Hide any previous messages
+
+            let url = `${API_BASE_URL}?`;
+            const params = [];
+
+            if (peakSearch1) {
+                params.push(`peak1=${encodeURIComponent(peakSearch1)}`);
+            }
+            // Only add peak2 if a specific peakType is selected (not 'all')
+            if (peakSearch2 && (peakType === 'hsqc' || peakType === 'cosy' || peakType === 'hmbc')) {
+                params.push(`peak2=${encodeURIComponent(peakSearch2)}`);
+            }
+            if (peakType !== 'all') { // Only include peakType if it's not 'all'
+                params.push(`peakType=${encodeURIComponent(peakType)}`);
+            }
+            if (nameSearchTerm) {
+                params.push(`name=${encodeURIComponent(nameSearchTerm)}`);
+            }
+
+            url += params.join('&');
+            console.log("Fetching from URL:", url); // Debugging
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to fetch entries');
+                }
+
+                const entries = result.data || [];
+                if (entries.length === 0) {
+                    noResultsMessage.classList.remove('hidden');
+                } else {
+                    structuresContainer.innerHTML = entries.map(entry => `
+                        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+                            ${entry.structure_image_base64 ? `
+                                <img src="${entry.structure_image_base64}" alt="Structure Image" class="w-full h-48 object-contain bg-gray-100 p-2">
+                            ` : `
+                                <div class="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-500">No Image</div>
+                            `}
+                            <div class="p-4 flex-grow flex flex-col">
+                                <h3 class="text-xl font-bold mb-2">${entry.name || 'Unnamed Structure'}</h3>
+                                <p class="text-sm text-gray-600 mb-4">ID: ${entry.id}</p>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm flex-grow">
+                                    <div>
+                                        <h4 class="font-semibold mb-1 text-gray-700">HSQC Peaks (1H, 13C)</h4>
+                                        <pre class="peak-list">${entry.hsqc_peaks || 'N/A'}</pre>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold mb-1 text-gray-700">COSY Peaks (1H, 1H)</h4>
+                                        <pre class="peak-list">${entry.cosy_peaks || 'N/A'}</pre>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold mb-1 text-gray-700">HMBC Peaks (1H, 13C)</h4>
+                                        <pre class="peak-list">${entry.hmbc_peaks || 'N/A'}</pre>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 flex space-x-2 justify-end">
+                                    <a href="index.html?editId=${entry.id}" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-300 text-sm">
+                                        Edit
+                                    </a>
+                                    <button onclick="deleteEntry(${entry.id})" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition duration-300 text-sm">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error("Error fetching entries:", error);
+                showResultsMessage(`Error fetching entries: ${error.message}`, true);
+                noResultsMessage.classList.remove('hidden'); // Show no results on error too
+                noResultsMessage.innerHTML = `<p class="text-lg text-red-600">Error loading structures. Please try again.</p>`;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function deleteEntry(id) {
+            if (!confirm(`Are you sure you want to delete structure ID ${id}?`)) {
+                return;
+            }
+            try {
+                showLoading(true);
+                const response = await fetch(`${API_BASE_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to delete entry');
+                }
+                showResultsMessage(result.message || 'Entry deleted successfully');
+                fetchEntries(
+                    peakSearchInput1.value.trim(), 
+                    peakSearchInput2.value.trim(), 
+                    document.querySelector('input[name="peakType"]:checked').value, 
+                    nameSearchInput.value.trim()
+                ); // Refresh the list
+            } catch (error) {
+                console.error("Error deleting entry:", error);
+                showResultsMessage(`Error deleting entry: ${error.message}`, true);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Event Listeners
+        searchButton.addEventListener('click', () => {
+            const peakSearchTerm1 = peakSearchInput1.value.trim();
+            const peakSearchTerm2 = peakSearchInput2.value.trim();
+            const nameSearchTerm = nameSearchInput.value.trim();
+            const peakType = document.querySelector('input[name="peakType"]:checked').value;
+            fetchEntries(peakSearchTerm1, peakSearchTerm2, peakType, nameSearchTerm);
+        });
+
+        clearSearchButton.addEventListener('click', () => {
+            nameSearchInput.value = '';
+            peakSearchInput1.value = '';
+            peakSearchInput2.value = '';
+            document.querySelector('input[name="peakType"][value="all"]').checked = true;
+            document.querySelector('input[name="peakType"][value="all"]').dispatchEvent(new Event('change')); // Trigger change to update inputs
+            fetchEntries();
+        });
+
+        // Event listener for peak type radio buttons to adjust placeholders
+        peakTypeRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                const selectedType = document.querySelector('input[name="peakType"]:checked').value;
+                if (selectedType === 'hsqc' || selectedType === 'hmbc') {
+                    peakSearchInput1.placeholder = '1H Shift';
+                    peakSearchInput2.placeholder = '13C Shift';
+                    peakSearchInput2.classList.remove('hidden'); // Ensure it's visible
+                } else if (selectedType === 'cosy') {
+                    peakSearchInput1.placeholder = '1H Shift 1';
+                    peakSearchInput2.placeholder = '1H Shift 2';
+                    peakSearchInput2.classList.remove('hidden'); // Ensure it's visible
+                } else { // 'all'
+                    peakSearchInput1.placeholder = 'Peak Shift (e.g., 7.26)'; // A general hint
+                    peakSearchInput2.value = ''; // Clear second input
+                    peakSearchInput2.classList.add('hidden'); // Hide second input
+                }
+            });
+        });
+
+        // Keypress listeners for enter key
+        nameSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchButton.click();
+        });
+        peakSearchInput1.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchButton.click();
+        });
+        peakSearchInput2.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchButton.click();
+        });
+
+        // Initial Load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set initial state of peak search inputs
+            document.querySelector('input[name="peakType"]:checked').dispatchEvent(new Event('change'));
+            fetchEntries();
+        });
+    </script>
+</body>
+</html>
