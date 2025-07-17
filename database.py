@@ -26,53 +26,12 @@ entries_collection = None
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# --- START: DEFINITION OF insert_initial_data_from_json() FUNCTION ---
-# This entire function definition MUST be placed here, before it's called
-def insert_initial_data_from_json():
-    global entries_collection # Ensure we're using the global variable
-
-    if entries_collection is None:
-        logger.error("Database connection not established. Cannot insert initial data.")
-        return
-
-    try:
-        # Load data from the JSON file
-        # The file will be in the root directory on Render
-        json_file_path = 'nmr_database.json' # Make sure this file is in your project root
-        if not os.path.exists(json_file_path):
-            logger.error(f"Error: {json_file_path} not found.")
-            return
-
-        with open(json_file_path, 'r', encoding='utf-8') as f:
-            initial_data = json.load(f)
-
-        # Add unique IDs and timestamps
-        for entry in initial_data:
-            entry['_id'] = str(uuid.uuid4()) # Use UUID for _id
-            entry['created_at'] = datetime.utcnow()
-            entry['updated_at'] = datetime.utcnow()
-
-            # Ensure all peak list strings are processed to lists of lists for consistency
-            for peak_type in ['hsqc_peaks', 'cosy_peaks', 'hmbc_peaks']:
-                if isinstance(entry.get(peak_type), str):
-                    entry[peak_type] = _parse_peak_string_to_list(entry[peak_type])
-                elif not isinstance(entry.get(peak_type), list):
-                    entry[peak_type] = [] # Ensure it's a list even if empty/missing
-
-        # Insert data into MongoDB
-        result = entries_collection.insert_many(initial_data)
-        logger.info(f"Inserted {len(result.inserted_ids)} initial entries into MongoDB.")
-
-    except FileNotFoundError:
-        logger.error(f"Error: {json_file_path} not found for initial data insertion.")
-    except json.JSONDecodeError as e:
-        logger.error(f"Error decoding JSON from {json_file_path}: {e}")
-    except Exception as e:
-        logger.exception(f"An unexpected error occurred during initial data insertion: {e}")
-
-# Helper function (keep this definition after insert_initial_data_from_json or within it if nested)
 def _parse_peak_string_to_list(peak_string):
+    """Parse peak string into list of numeric pairs, handling ranges and different formats."""
     peaks = []
+    if not peak_string or not isinstance(peak_string, str):
+        return peaks
+        
     for line in peak_string.strip().split('\n'):
         parts = line.strip().split()
         if len(parts) == 2:
@@ -105,8 +64,57 @@ def _parse_peak_string_to_list(peak_string):
                 logger.warning(f"Skipping malformed COSY peak line: {line}")
     return peaks
 
-# --- END: DEFINITION OF insert_initial_data_from_json() FUNCTION ---
+def _process_peak_fields(data):
+    """Process all peak fields in the data, creating both original and parsed versions."""
+    for peak_type in ['hsqc_peaks', 'cosy_peaks', 'hmbc_peaks']:
+        # Ensure the original field exists and is properly formatted
+        if isinstance(data.get(peak_type), str):
+            parsed = _parse_peak_string_to_list(data[peak_type])
+            data[f'{peak_type}_parsed'] = parsed
+        elif isinstance(data.get(peak_type), list):
+            # If it's already a list, ensure the parsed version exists
+            data[f'{peak_type}_parsed'] = data[peak_type]
+        else:
+            # Initialize empty lists for missing fields
+            data[peak_type] = []
+            data[f'{peak_type}_parsed'] = []
+    return data
 
+def insert_initial_data_from_json():
+    global entries_collection
+    
+    if entries_collection is None:
+        logger.error("Database connection not established. Cannot insert initial data.")
+        return
+
+    try:
+        json_file_path = 'nmr_database.json'
+        if not os.path.exists(json_file_path):
+            logger.error(f"Error: {json_file_path} not found.")
+            return
+
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            initial_data = json.load(f)
+
+        # Add unique IDs and timestamps
+        for entry in initial_data:
+            entry['_id'] = str(uuid.uuid4())
+            entry['created_at'] = datetime.utcnow()
+            entry['updated_at'] = datetime.utcnow()
+            
+            # Process all peak fields
+            _process_peak_fields(entry)
+
+        # Insert data into MongoDB
+        result = entries_collection.insert_many(initial_data)
+        logger.info(f"Inserted {len(result.inserted_ids)} initial entries into MongoDB.")
+
+    except FileNotFoundError:
+        logger.error(f"Error: {json_file_path} not found for initial data insertion.")
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON from {json_file_path}: {e}")
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred during initial data insertion: {e}")
 
 # Attempt to connect to MongoDB
 try:
@@ -117,14 +125,18 @@ try:
         db = client[DB_NAME]
         entries_collection = db["entries"]
         
-        # --- NEW LOCATION FOR CALLING insert_initial_data_from_json() ---
-        logger.info(f"Checking if '{DB_NAME}' database and 'entries' collection need initial data...")
-        if entries_collection.count_documents({}) == 0:
-            insert_initial_data_from_json() # Now the function is defined above!
+        # Debug logging for initial connection
+        logger.info(f"Database '{DB_NAME}' and collection 'entries' exist")
+        count = entries_collection.count_documents({})
+        logger.info(f"Current document count: {count}")
+        
+        # Check if we need to insert initial data
+        if count == 0:
+            logger.info("Database is empty, inserting initial data...")
+            insert_initial_data_from_json()
         else:
-            logger.info("Entries collection is not empty, skipping initial data insertion.")
-        # --- END NEW LOCATION FOR CALL ---
-
+            logger.info("Database contains data, skipping initial insertion.")
+            
     else:
         logger.warning("MONGO_URI environment variable not set. Attempting local MongoDB fallback.")
         try:
@@ -132,15 +144,18 @@ try:
             db = client[DB_NAME]
             entries_collection = db["entries"]
             logger.info("Successfully connected to local MongoDB (fallback).")
+            
             if entries_collection.count_documents({}) == 0:
-                insert_initial_data_from_json() # Call for local fallback too
+                insert_initial_data_from_json()
             else:
-                logger.info("Entries collection is not empty locally, skipping initial data insertion.")
+                logger.info("Local database contains data, skipping initial insertion.")
+                
         except ConnectionFailure as e:
             logger.error(f"Could not connect to local MongoDB: {e}")
             client = None
             db = None
             entries_collection = None
+            
 except ConnectionFailure as e:
     logger.error(f"Could not connect to MongoDB Atlas: {e}")
     client = None
@@ -152,11 +167,7 @@ except OperationFailure as e:
     db = None
     entries_collection = None
 
-# ----------------------------------------------------------------------
-# Flask Routes - Keep these as they are, below the database setup
-# ----------------------------------------------------------------------
-
-# Serve static files from 'static' directory (for CSS, JS, images)
+# Flask Routes
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory('static', filename)
@@ -182,7 +193,6 @@ def get_entries():
         query = {}
         compound_name = request.args.get('compound_name')
         if compound_name:
-            # Use regex for case-insensitive partial match
             query['name'] = {'$regex': compound_name, '$options': 'i'}
         
         entry_id = request.args.get('id')
@@ -203,44 +213,52 @@ def get_entries():
 
                 if peak_type == 'hsqc' and peak1 is not None and peak2 is not None:
                     peak_query_list.append({
-                        'hsqc_peaks': {'$elemMatch': {
+                        'hsqc_peaks_parsed': {'$elemMatch': {
                             '$and': [
-                                {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH},
-                                {'$gte': peak2 - TOLERANCE_C_MATCH, '$lte': peak2 + TOLERANCE_C_MATCH}
+                                {'$gte': [peak1 - TOLERANCE_H_MATCH, peak2 - TOLERANCE_C_MATCH]},
+                                {'$lte': [peak1 + TOLERANCE_H_MATCH, peak2 + TOLERANCE_C_MATCH]}
                             ]
                         }}
                     })
                 elif peak_type == 'cosy' and peak1 is not None and peak2 is not None:
                     peak_query_list.append({
-                        'cosy_peaks': {'$elemMatch': {
+                        'cosy_peaks_parsed': {'$elemMatch': {
                             '$and': [
-                                {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH},
-                                {'$gte': peak2 - TOLERANCE_H_MATCH, '$lte': peak2 + TOLERANCE_H_MATCH}
+                                {'$gte': [peak1 - TOLERANCE_H_MATCH, peak2 - TOLERANCE_H_MATCH]},
+                                {'$lte': [peak1 + TOLERANCE_H_MATCH, peak2 + TOLERANCE_H_MATCH]}
                             ]
                         }}
                     })
                 elif peak_type == 'hmbc' and peak1 is not None and peak2 is not None:
                     peak_query_list.append({
-                        'hmbc_peaks': {'$elemMatch': {
+                        'hmbc_peaks_parsed': {'$elemMatch': {
                             '$and': [
-                                {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH},
-                                {'$gte': peak2 - TOLERANCE_C_MATCH, '$lte': peak2 + TOLERANCE_C_MATCH}
+                                {'$gte': [peak1 - TOLERANCE_H_MATCH, peak2 - TOLERANCE_C_MATCH]},
+                                {'$lte': [peak1 + TOLERANCE_H_MATCH, peak2 + TOLERANCE_C_MATCH]}
                             ]
                         }}
                     })
-                elif peak_type == 'all' and peak1 is not None: # Search for any peak type with peak1 only
+                elif peak_type == 'all' and peak1 is not None:
                     all_peak_types_query = []
-                    all_peak_types_query.append({'hsqc_peaks': {'$elemMatch': {'$or': [{'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}}, {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}]}}})
-                    all_peak_types_query.append({'cosy_peaks': {'$elemMatch': {'$or': [{'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}}, {'1': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}}]}}})
-                    all_peak_types_query.append({'hmbc_peaks': {'$elemMatch': {'$or': [{'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}}, {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}]}}})
+                    all_peak_types_query.append({'hsqc_peaks_parsed': {'$elemMatch': {'$or': [
+                        {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                        {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}
+                    ]}})
+                    all_peak_types_query.append({'cosy_peaks_parsed': {'$elemMatch': {'$or': [
+                        {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                        {'1': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}}
+                    ]}})
+                    all_peak_types_query.append({'hmbc_peaks_parsed': {'$elemMatch': {'$or': [
+                        {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                        {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}
+                    ]}})
                     peak_query_list.append({'$or': all_peak_types_query})
                 
                 if peak_query_list:
-                    if query: # If there's an existing compound name query
+                    if query:
                         query = {'$and': [query, {'$or': peak_query_list}]}
                     else:
                         query = {'$or': peak_query_list}
-
 
             except ValueError:
                 return jsonify({"success": False, "error": "Invalid peak value. Please provide numeric values."}), 400
@@ -269,12 +287,8 @@ def add_entry():
     data['created_at'] = datetime.utcnow()
     data['updated_at'] = datetime.utcnow()
 
-    # Process peak lists from string to list of lists
-    for peak_type in ['hsqc_peaks', 'cosy_peaks', 'hmbc_peaks']:
-        if isinstance(data.get(peak_type), str):
-            data[peak_type] = _parse_peak_string_to_list(data[peak_type])
-        elif not isinstance(data.get(peak_type), list):
-            data[peak_type] = [] # Ensure it's a list even if empty/missing
+    # Process all peak fields
+    _process_peak_fields(data)
             
     try:
         result = entries_collection.insert_one(data)
@@ -293,17 +307,12 @@ def update_entry(entry_id):
     
     # Remove _id from data to prevent it from being updated
     data.pop('_id', None) 
-    data['updated_at'] = datetime.utcnow() # Update timestamp
+    data['updated_at'] = datetime.utcnow()
 
-    # Process peak lists from string to list of lists for update
-    for peak_type in ['hsqc_peaks', 'cosy_peaks', 'hmbc_peaks']:
-        if isinstance(data.get(peak_type), str):
-            data[peak_type] = _parse_peak_string_to_list(data[peak_type])
-        elif not isinstance(data.get(peak_type), list):
-            data[peak_type] = [] # Ensure it's a list even if empty/missing
+    # Process all peak fields
+    _process_peak_fields(data)
 
     try:
-        # Use str(ObjectId(entry_id)) to handle cases where _id might be stored as ObjectId
         result = entries_collection.update_one({'_id': entry_id}, {'$set': data})
         
         if result.matched_count == 0:
@@ -320,7 +329,6 @@ def delete_entry(entry_id):
         return jsonify({"success": False, "error": "Database connection not available"}), 500
         
     try:
-        # Use str(ObjectId(entry_id)) to handle cases where _id might be stored as ObjectId
         result = entries_collection.delete_one({'_id': entry_id})
         
         if result.deleted_count == 0:
@@ -336,9 +344,9 @@ def _recursive_clean_for_json(obj):
         return {k: _recursive_clean_for_json(v) for k, v in obj.items() if k != '_id'}
     elif isinstance(obj, list):
         return [_recursive_clean_for_json(elem) for elem in obj]
-    elif isinstance(obj, ObjectId): # Handle ObjectId if it somehow made it here
+    elif isinstance(obj, ObjectId):
         return str(obj)
-    elif isinstance(obj, datetime): # Convert datetime objects to ISO format strings
+    elif isinstance(obj, datetime):
         return obj.isoformat()
     return obj
 
@@ -368,15 +376,9 @@ def analyze_nmr_route():
     
     # Pre-process database entries to ensure peak lists are in correct format
     for entry in database_entries:
-        # Convert ObjectId to string for consistency if it exists
         if '_id' in entry and isinstance(entry['_id'], ObjectId):
             entry['_id'] = str(entry['_id'])
-
-        for peak_type in ['hsqc_peaks', 'cosy_peaks', 'hmbc_peaks']:
-            if isinstance(entry.get(peak_type), str):
-                entry[peak_type] = _parse_peak_string_to_list(entry[peak_type])
-            elif not isinstance(entry.get(peak_type), list):
-                entry[peak_type] = [] # Ensure it's a list even if empty/missing
+        _process_peak_fields(entry)
 
     try:
         # Perform analysis
@@ -387,7 +389,6 @@ def analyze_nmr_route():
             current_tolerance_c
         )
         
-        # Apply _recursive_clean_for_json to the results dictionary
         cleaned_results = _recursive_clean_for_json({
             'detected_entries': results['detected_entries'],
             'unmatched_sample_peaks': results['unmatched_sample_peaks'],
@@ -407,5 +408,3 @@ def analyze_nmr_route():
             'success': False,
             'error': str(e)
         }), 500
-
-# Remove the old `if __name__ == '__main__':` block if it's still there
