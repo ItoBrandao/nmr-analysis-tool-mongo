@@ -11,6 +11,7 @@ import matplotlib.cm as cm
 from scipy.stats import multivariate_normal
 import logging
 import copy # Import the copy module
+from flask import jsonify, request  # Added for API endpoint
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -537,4 +538,53 @@ def analyze_mixture(sample_hsqc, sample_cosy, sample_hmbc, db_entries,
         }
     }
 
-run_analysis = analyze_mixture
+def run_analysis(hsqc_data, cosy_data, hmbc_data, db_entries):
+    """
+    Wrapper function for analyze_mixture that uses default tolerances.
+    """
+    return analyze_mixture(hsqc_data, cosy_data, hmbc_data, db_entries)
+
+# New API endpoint handler function
+def handle_analyze_request(db_entries):
+    """
+    Handles the /api/analyze POST request from the frontend.
+    """
+    try:
+        data = request.get_json()
+        hsqc_data = data.get('hsqc', '').strip()
+        cosy_data = data.get('cosy', '').strip()
+        hmbc_data = data.get('hmbc', '').strip()
+
+        if not hsqc_data and not cosy_data and not hmbc_data:
+            return jsonify({"success": False, "error": "Please enter at least one type of NMR data."}), 400
+
+        # Perform the analysis
+        analysis_results = analyze_mixture(
+            hsqc_data=hsqc_data,
+            cosy_data=cosy_data,
+            hmbc_data=hmbc_data,
+            db_entries=db_entries
+        )
+
+        # Generate NMR plots
+        hsqc_plot, cosy_plot, hmbc_plot = generate_nmr_plots(hsqc_data, cosy_data, hmbc_data)
+
+        # Prepare the response
+        response_data = {
+            "success": True,
+            "message": "Analysis completed successfully!",
+            "data": {
+                "analysis": analysis_results,
+                "plots": {
+                    "hsqc": hsqc_plot,
+                    "cosy": cosy_plot,
+                    "hmbc": hmbc_plot
+                }
+            }
+        }
+
+        return jsonify(response_data), 200
+
+    except Exception as e:
+        logger.error(f"Error during analysis: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
