@@ -10,6 +10,7 @@ import json
 import detector
 from flask_cors import CORS
 import logging
+import re # Import re module for regex operations
 # Import the default tolerances to use as fallbacks
 from detector import TOLERANCE_H_MATCH, TOLERANCE_C_MATCH
 
@@ -58,7 +59,7 @@ else:
 # Add these debug lines right after the connection attempt
 logger.info(f"MongoDB connection status: {client is not None}")
 logger.info(f"Database accessible: {db is not None}")
-if entries_collection:
+if entries_collection is not None: # Corrected line
     try:
         logger.info(f"Collection count: {entries_collection.count_documents({})}")
     except Exception as e:
@@ -113,7 +114,7 @@ def parse_peaks_string(peaks_str):
     return peaks
 
 def add_entry(data):
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized.")
         return None
     try:
@@ -141,7 +142,7 @@ def add_entry(data):
         return None
 
 def get_all_entries():
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized.")
         return []
     try:
@@ -156,7 +157,7 @@ def get_all_entries():
         return []
 
 def get_entry_by_id(entry_id):
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized.")
         return None
     try:
@@ -173,7 +174,7 @@ def get_entry_by_id(entry_id):
         return None
 
 def update_entry(entry_id, data):
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized.")
         return False
     try:
@@ -204,7 +205,7 @@ def update_entry(entry_id, data):
         return False
 
 def delete_entry(entry_id):
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized.")
         return False
     try:
@@ -220,7 +221,7 @@ def delete_entry(entry_id):
         return False
 
 def find_entries_by_name(name):
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized.")
         return []
     try:
@@ -235,7 +236,7 @@ def find_entries_by_name(name):
         return []
 
 def find_entries_by_peak(peak_type, h_shift, c_shift=None, h2_shift=None):
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized.")
         return []
     try:
@@ -294,7 +295,7 @@ def find_entries_by_peak(peak_type, h_shift, c_shift=None, h2_shift=None):
             else:
                 logger.warning("All peak type search called with no valid shifts.")
                 return []
-        
+            
         if not query:
             return [] # No valid query built
 
@@ -312,7 +313,7 @@ def find_entries_by_peak(peak_type, h_shift, c_shift=None, h2_shift=None):
         return []
 
 def insert_initial_data_from_json():
-    if entries_collection is None:
+    if entries_collection is not None: # Corrected line
         logger.error("Database collection is not initialized, cannot insert initial data.")
         return
 
