@@ -651,7 +651,7 @@ def analyze_nmr_route():
         data = request.get_json()
         logger.info(f"Analyze NMR: Received data for analysis. Keys: {list(data.keys())}")
 
-        sample_peaks_str = data.get('sample_peaks')
+        
         hsqc_data_str = data.get('hsqc_data')
         cosy_data_str = data.get('cosy_data')
         hmbc_data_str = data.get('hmbc_data')

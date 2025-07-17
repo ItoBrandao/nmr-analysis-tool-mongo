@@ -525,9 +525,14 @@ def analyze_mixture(sample_hsqc, sample_cosy, sample_hmbc, db_entries,
         [peak['H'], peak['C']] for i, peak in enumerate(all_sample_peaks['hmbc']) if i not in overall_matched_hmbc_indices
     ]
 
-    # Sort by best matches first
+       # Sort by best matches first
     sorted_results = sorted(results, key=lambda x: x['match_score'], reverse=True)
     logger.debug(f"--- Finished analyze_mixture. Detected {len(sorted_results)} compounds. ---")
+
+    # Generate plots
+    hsqc_plot, cosy_plot, hmbc_plot = generate_nmr_plots(
+        sample_hsqc, sample_cosy, sample_hmbc
+    )
 
     return {
         'detected_entries': sorted_results,
@@ -536,7 +541,7 @@ def analyze_mixture(sample_hsqc, sample_cosy, sample_hmbc, db_entries,
             'cosy': unmatched_cosy_peaks,
             'hmbc': unmatched_hmbc_peaks
         }
-    }
+    }, (hsqc_plot, cosy_plot, hmbc_plot)
 
 def run_analysis(hsqc_data, cosy_data, hmbc_data, db_entries):
     """
