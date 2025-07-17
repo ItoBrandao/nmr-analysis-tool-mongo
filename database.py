@@ -1,8 +1,8 @@
 import os
-import uuid # For generating unique IDs
+import uuid
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
-from bson.objectid import ObjectId # Import ObjectId for _id handling
+from bson.objectid import ObjectId
 import pandas as pd
 from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
@@ -10,24 +10,103 @@ import json
 import detector
 from flask_cors import CORS
 import logging
-import re # Import re module for regex operations
-# Import the default tolerances to use as fallbacks
+import re
 from detector import TOLERANCE_H_MATCH, TOLERANCE_C_MATCH
 
 app = Flask(__name__)
+CORS(app) # Enable CORS for your Flask app if you haven't already
 
-# MongoDB connection setup
-# MONGO_URI will be set in Render's environment variables
 MONGO_URI = os.environ.get('MONGO_URI')
-DB_NAME = "nmr_database_app" # This will be the name of your database inside MongoDB Atlas
+DB_NAME = "nmr_database_app"
 
-client = None # Initialize client to None
-db = None # Initialize db to None
-entries_collection = None # Initialize entries_collection to None
+client = None
+db = None
+entries_collection = None
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# --- START: DEFINITION OF insert_initial_data_from_json() FUNCTION ---
+# Place the entire function definition here, before it's called
+def insert_initial_data_from_json():
+    global entries_collection # Ensure we're using the global variable
+
+    if entries_collection is None:
+        logger.error("Database connection not established. Cannot insert initial data.")
+        return
+
+    try:
+        # Load data from the JSON file
+        # The file will be in the root directory on Render
+        json_file_path = 'nmr_database.json' # Make sure this file is in your project root
+        if not os.path.exists(json_file_path):
+            logger.error(f"Error: {json_file_path} not found.")
+            return
+
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            initial_data = json.load(f)
+
+        # Add unique IDs and timestamps
+        for entry in initial_data:
+            entry['_id'] = str(uuid.uuid4()) # Use UUID for _id
+            entry['created_at'] = datetime.utcnow()
+            entry['updated_at'] = datetime.utcnow()
+
+            # Ensure all peak list strings are processed to lists of lists for consistency
+            for peak_type in ['hsqc_peaks', 'cosy_peaks', 'hmbc_peaks']:
+                if isinstance(entry.get(peak_type), str):
+                    entry[peak_type] = _parse_peak_string_to_list(entry[peak_type])
+                elif not isinstance(entry.get(peak_type), list):
+                    entry[peak_type] = [] # Ensure it's a list even if empty/missing
+
+        # Insert data into MongoDB
+        result = entries_collection.insert_many(initial_data)
+        logger.info(f"Inserted {len(result.inserted_ids)} initial entries into MongoDB.")
+
+    except FileNotFoundError:
+        logger.error(f"Error: {json_file_path} not found for initial data insertion.")
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON from {json_file_path}: {e}")
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred during initial data insertion: {e}")
+
+# Helper function (keep this definition after insert_initial_data_from_json or within it if nested)
+def _parse_peak_string_to_list(peak_string):
+    peaks = []
+    for line in peak_string.strip().split('\n'):
+        parts = line.strip().split()
+        if len(parts) == 2:
+            try:
+                # Handle ranges like "23.4-26.0" by taking the average or first value
+                p1_str = parts[0]
+                p2_str = parts[1]
+
+                p1 = float(p1_str) # Assume first part is always a float
+
+                if '-' in p2_str:
+                    # If second part is a range, take the midpoint
+                    range_parts = p2_str.split('-')
+                    if len(range_parts) == 2:
+                        p2 = (float(range_parts[0]) + float(range_parts[1])) / 2
+                    else:
+                        p2 = float(p2_str) # Fallback if malformed range
+                else:
+                    p2 = float(p2_str)
+
+                peaks.append([p1, p2])
+            except ValueError:
+                logger.warning(f"Skipping malformed peak line: {line}")
+        elif len(parts) > 2: # For COSY peaks "H1 H2"
+            try:
+                p1 = float(parts[0])
+                p2 = float(parts[1])
+                peaks.append([p1, p2])
+            except ValueError:
+                logger.warning(f"Skipping malformed COSY peak line: {line}")
+    return peaks
+
+# --- END: DEFINITION OF insert_initial_data_from_json() FUNCTION ---
+
 
 # Attempt to connect to MongoDB
 try:
@@ -37,13 +116,15 @@ try:
         logger.info("Successfully connected to MongoDB Atlas!")
         db = client[DB_NAME]
         entries_collection = db["entries"]
-        # --- NEW LOCATION FOR DATA INSERTION ---
+        
+        # --- NEW LOCATION FOR CALLING insert_initial_data_from_json() ---
         logger.info(f"Checking if '{DB_NAME}' database and 'entries' collection need initial data...")
         if entries_collection.count_documents({}) == 0:
-            insert_initial_data_from_json()
+            insert_initial_data_from_json() # Now the function is defined above!
         else:
             logger.info("Entries collection is not empty, skipping initial data insertion.")
-        # --- END NEW LOCATION ---
+        # --- END NEW LOCATION FOR CALL ---
+
     else:
         logger.warning("MONGO_URI environment variable not set. Attempting local MongoDB fallback.")
         try:
@@ -51,9 +132,8 @@ try:
             db = client[DB_NAME]
             entries_collection = db["entries"]
             logger.info("Successfully connected to local MongoDB (fallback).")
-            # For local testing, you might still want to call it here too
             if entries_collection.count_documents({}) == 0:
-                insert_initial_data_from_json()
+                insert_initial_data_from_json() # Call for local fallback too
             else:
                 logger.info("Entries collection is not empty locally, skipping initial data insertion.")
         except ConnectionFailure as e:
@@ -61,6 +141,16 @@ try:
             client = None
             db = None
             entries_collection = None
+except ConnectionFailure as e:
+    logger.error(f"Could not connect to MongoDB Atlas: {e}")
+    client = None
+    db = None
+    entries_collection = None
+except OperationFailure as e:
+    logger.error(f"MongoDB operation failed (authentication/authorization issue?): {e}")
+    client = None
+    db = None
+    entries_collection = None
 except ConnectionFailure as e:
     logger.error(f"Could not connect to MongoDB Atlas: {e}")
     client = None
