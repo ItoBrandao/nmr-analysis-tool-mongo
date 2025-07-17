@@ -660,9 +660,6 @@ def analyze_nmr_route():
         custom_tolerance_h = data.get('tolerance_h')
         custom_tolerance_c = data.get('tolerance_c')
 
-        if not sample_peaks_str:
-            logger.error("Analyze NMR: Missing 'sample_peaks' data for analysis.")
-            return jsonify({'success': False, 'error': 'Sample peaks data is required.'}), 400
 
         # Parse sample peaks
         sample_peaks = {
