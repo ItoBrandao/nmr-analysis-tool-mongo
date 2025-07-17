@@ -661,28 +661,6 @@ def analyze_nmr_route():
         custom_tolerance_c = data.get('tolerance_c')
 
 
-        results, plots = detector.analyze_mixture(
-   		hsqc_data_str,
-   		cosy_data_str,
-    		hmbc_data_str,
-    		all_database_entries,
-    		tolerance_h=current_tolerance_h,
-    		tolerance_c=current_tolerance_c
-	)
-	cleaned_results = _recursive_clean_for_json({
-    		'detected_entries': results['detected_entries'],
-    		'unmatched_sample_peaks': results['unmatched_sample_peaks'],
-	})
-
-	return jsonify({
-    		'success': True,
-    		'detected_entries': cleaned_results['detected_entries'],
-    		'unmatched_sample_peaks': cleaned_results['unmatched_sample_peaks'],
-    		'hsqc_image_base64': plots[0] if plots[0] else None,
-    		'cosy_image_base64': plots[1] if plots[1] else None,
-    		'hmbc_image_base64': plots[2] if plots[2] else None
-	})
-        
         # Override default tolerances if custom ones are provided
         current_tolerance_h = custom_tolerance_h if custom_tolerance_h is not None else TOLERANCE_H_MATCH
         current_tolerance_c = custom_tolerance_c if custom_tolerance_c is not None else TOLERANCE_C_MATCH
@@ -692,13 +670,13 @@ def analyze_nmr_route():
             logger.warning("Analyze NMR: No database entries found for comparison.")
             return jsonify({'success': False, 'error': 'No NMR structures in database for analysis.'}), 404
 
-        results = detector.analyze_mixture(
-           	hsqc_data_str,
-            	cosy_data_str,
-           	hmbc_data_str,
-            	all_database_entries,
-		tolerance_h=current_tolerance_h,
-		tolerance_c=current_tolerance_c
+        results, plots = detector.analyze_mixture(
+                hsqc_data_str,
+                cosy_data_str,
+                hmbc_data_str,
+                all_database_entries,
+                tolerance_h=current_tolerance_h,
+                tolerance_c=current_tolerance_c
         )
         
         # Apply _recursive_clean_for_json to the results dictionary
