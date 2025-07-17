@@ -108,11 +108,7 @@
                     <span id="buttonText">Add New Structure</span>
                 </button>
 
-                <button id="viewAllBtn" class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 w-full">
-                    View All Structures
-                </button>
-
-                <form id="nmrEntryForm" class="space-y-6 mt-6 hidden">
+                                <form id="nmrEntryForm" class="space-y-6 mt-6 hidden">
                     <input type="hidden" id="entryId">
                     
                     <div>
@@ -165,18 +161,7 @@
             </div>
         </main>
 
-        <div id="viewAllModal" class="modal hidden">
-            <div class="modal-content">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold">All Structures</h2>
-                    <button onclick="closeViewAllModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                        &times;
-                    </button>
-                </div>
-                <div id="allStructuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                </div>
-            </div>
-        </div>
+     
 
         <footer class="bg-gray-800 text-white text-center p-4">
             <p>&copy; 2023 NMR Structure Database. All rights reserved.</p>
@@ -187,9 +172,7 @@
         const API_BASE_URL = '/api/entries';
         
         // DOM Elements
-        const viewAllBtn = document.getElementById('viewAllBtn');
-        const viewAllModal = document.getElementById('viewAllModal');
-        const allStructuresContainer = document.getElementById('allStructuresContainer');
+
         const nmrEntryForm = document.getElementById('nmrEntryForm');
         const toggleFormBtn = document.getElementById('toggleFormBtn');
         const plusIcon = document.getElementById('plusIcon');
@@ -246,49 +229,7 @@
             buttonText.textContent = nmrEntryForm.classList.contains('hidden') ? 'Add New Structure' : 'Hide Form';
         });
 
-        // View All Functionality
-        viewAllBtn.addEventListener('click', async () => {
-            try {
-                const response = await fetch(API_BASE_URL);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch structures');
-                }
-                const result = await response.json();
-                
-                if (!result.success) {
-                    throw new Error(result.error || 'Failed to load structures');
-                }
-
-                const structures = result.data || [];
-                
-                if (structures.length === 0) {
-                    allStructuresContainer.innerHTML = '<p class="text-gray-600">No structures found in the database.</p>';
-                } else {
-                    allStructuresContainer.innerHTML = structures.map(structure => `
-                        <div class="border rounded-lg p-4 bg-white shadow-sm">
-                            <h3 class="font-bold text-lg">${structure.name || 'Unnamed Structure'}</h3>
-                            <p class="text-sm text-gray-600 mb-2">ID: ${structure.id}</p>
-                            ${structure.structure_image_base64 ? 
-                                `<img src="${structure.structure_image_base64}" alt="Structure Image" class="mt-2 mb-2 max-w-full h-auto rounded">` : 
-                                '<div class="bg-gray-200 h-32 flex items-center justify-center text-gray-500 mb-2">No Image</div>'}
-                            <div class="flex space-x-2">
-                                <button onclick="loadStructureForEdit(${structure.id})" class="bg-blue-500 text-white px-3 py-1 rounded text-sm">
-                                    Edit
-                                </button>
-                                <button onclick="deleteStructure(${structure.id})" class="bg-red-500 text-white px-3 py-1 rounded text-sm">
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-                
-                viewAllModal.classList.remove('hidden');
-            } catch (error) {
-                showMessage(`Error loading structures: ${error.message}`, true);
-                console.error("Error loading structures:", error);
-            }
-        });
+      
 
         function closeViewAllModal() {
             viewAllModal.classList.add('hidden');
