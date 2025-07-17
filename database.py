@@ -14,7 +14,7 @@ import re
 from detector import TOLERANCE_H_MATCH, TOLERANCE_C_MATCH
 
 app = Flask(__name__)
-CORS(app) # Enable CORS for your Flask app if you haven't already
+CORS(app)  # Enable CORS for your Flask app
 
 MONGO_URI = os.environ.get('MONGO_URI')
 DB_NAME = "nmr_database_app"
@@ -40,7 +40,7 @@ def _parse_peak_string_to_list(peak_string):
                 p1_str = parts[0]
                 p2_str = parts[1]
 
-                p1 = float(p1_str) # Assume first part is always a float
+                p1 = float(p1_str)  # Assume first part is always a float
 
                 if '-' in p2_str:
                     # If second part is a range, take the midpoint
@@ -48,14 +48,14 @@ def _parse_peak_string_to_list(peak_string):
                     if len(range_parts) == 2:
                         p2 = (float(range_parts[0]) + float(range_parts[1])) / 2
                     else:
-                        p2 = float(p2_str) # Fallback if malformed range
+                        p2 = float(p2_str)  # Fallback if malformed range
                 else:
                     p2 = float(p2_str)
 
                 peaks.append([p1, p2])
             except ValueError:
                 logger.warning(f"Skipping malformed peak line: {line}")
-        elif len(parts) > 2: # For COSY peaks "H1 H2"
+        elif len(parts) > 2:  # For COSY peaks "H1 H2"
             try:
                 p1 = float(parts[0])
                 p2 = float(parts[1])
@@ -213,45 +213,69 @@ def get_entries():
 
                 if peak_type == 'hsqc' and peak1 is not None and peak2 is not None:
                     peak_query_list.append({
-                        'hsqc_peaks_parsed': {'$elemMatch': {
-                            '$and': [
-                                {'$gte': [peak1 - TOLERANCE_H_MATCH, peak2 - TOLERANCE_C_MATCH]},
-                                {'$lte': [peak1 + TOLERANCE_H_MATCH, peak2 + TOLERANCE_C_MATCH]}
-                            ]
-                        }}
+                        'hsqc_peaks_parsed': {
+                            '$elemMatch': {
+                                '$and': [
+                                    {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                                    {'1': {'$gte': peak2 - TOLERANCE_C_MATCH, '$lte': peak2 + TOLERANCE_C_MATCH}}
+                                ]
+                            }
+                        }
                     })
                 elif peak_type == 'cosy' and peak1 is not None and peak2 is not None:
                     peak_query_list.append({
-                        'cosy_peaks_parsed': {'$elemMatch': {
-                            '$and': [
-                                {'$gte': [peak1 - TOLERANCE_H_MATCH, peak2 - TOLERANCE_H_MATCH]},
-                                {'$lte': [peak1 + TOLERANCE_H_MATCH, peak2 + TOLERANCE_H_MATCH]}
-                            ]
-                        }}
+                        'cosy_peaks_parsed': {
+                            '$elemMatch': {
+                                '$and': [
+                                    {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                                    {'1': {'$gte': peak2 - TOLERANCE_H_MATCH, '$lte': peak2 + TOLERANCE_H_MATCH}}
+                                ]
+                            }
+                        }
                     })
                 elif peak_type == 'hmbc' and peak1 is not None and peak2 is not None:
                     peak_query_list.append({
-                        'hmbc_peaks_parsed': {'$elemMatch': {
-                            '$and': [
-                                {'$gte': [peak1 - TOLERANCE_H_MATCH, peak2 - TOLERANCE_C_MATCH]},
-                                {'$lte': [peak1 + TOLERANCE_H_MATCH, peak2 + TOLERANCE_C_MATCH]}
-                            ]
-                        }}
+                        'hmbc_peaks_parsed': {
+                            '$elemMatch': {
+                                '$and': [
+                                    {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                                    {'1': {'$gte': peak2 - TOLERANCE_C_MATCH, '$lte': peak2 + TOLERANCE_C_MATCH}}
+                                ]
+                            }
+                        }
                     })
-                elif peak_type == 'all' and peak1 is not None:
+                if peak_type == 'all' and peak1 is not None:  # Changed from elif to if
                     all_peak_types_query = []
-                    all_peak_types_query.append({'hsqc_peaks_parsed': {'$elemMatch': {'$or': [
-                        {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
-                        {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}
-                    ]}})
-                    all_peak_types_query.append({'cosy_peaks_parsed': {'$elemMatch': {'$or': [
-                        {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
-                        {'1': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}}
-                    ]}})
-                    all_peak_types_query.append({'hmbc_peaks_parsed': {'$elemMatch': {'$or': [
-                        {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
-                        {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}
-                    ]}})
+                    all_peak_types_query.append({
+                        'hsqc_peaks_parsed': {
+                            '$elemMatch': {
+                                '$or': [
+                                    {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                                    {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}
+                                ]
+                            }
+                        }
+                    })
+                    all_peak_types_query.append({
+                        'cosy_peaks_parsed': {
+                            '$elemMatch': {
+                                '$or': [
+                                    {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                                    {'1': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}}
+                                ]
+                            }
+                        }
+                    })
+                    all_peak_types_query.append({
+                        'hmbc_peaks_parsed': {
+                            '$elemMatch': {
+                                '$or': [
+                                    {'0': {'$gte': peak1 - TOLERANCE_H_MATCH, '$lte': peak1 + TOLERANCE_H_MATCH}},
+                                    {'1': {'$gte': peak1 - TOLERANCE_C_MATCH, '$lte': peak1 + TOLERANCE_C_MATCH}}
+                                ]
+                            }
+                        }
+                    })
                     peak_query_list.append({'$or': all_peak_types_query})
                 
                 if peak_query_list:
