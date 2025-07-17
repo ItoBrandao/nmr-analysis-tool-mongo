@@ -54,136 +54,133 @@
             display: inline-block;
         }
         #imagePreview {
-            /* Removed max-height: 200px; */
             display: none;
         }
         #imagePreview img {
-            max-height: 100%; /* Changed from max-height to height to better control and prevent overflow */
+            max-height: 100%;
             width: auto;
-            max-width: 100%; /* Ensure image fits container */
+            max-width: 100%;
+        }
+        .nav-link {
+            color: #4b5563;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        .nav-link:hover {
+            color: #3730a3;
+            background-color: #e0e7ff;
         }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen">
-    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
-        <h1 class="text-4xl font-extrabold text-center text-gray-900 mb-10">NMR Structure Database</h1>
-
-        <div id="message" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
-            <strong class="font-bold">Success!</strong>
-            <span class="block sm:inline" id="message-text"></span>
-            <span class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer" onclick="document.getElementById('message').classList.add('hidden')">
-                <svg class="fill-current h-6 w-6 text-green-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.15a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697L11.819 10l3.029 2.651a1.2 1.2 0 0 1 0 1.698z"/></svg>
-            </span>
-        </div>
-
-        <div id="error-message" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-            <strong class="font-bold">Error!</strong>
-            <span class="block sm:inline" id="error-message-text"></span>
-            <span class="absolute top-0 bottom-0 right-0 px-4 py-3 cursor-pointer" onclick="document.getElementById('error-message').classList.add('hidden')">
-                <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.15a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697L11.819 10l3.029 2.651a1.2 1.2 0 0 1 0 1.698z"/></svg>
-            </span>
-        </div>
-
-        <div class="flex justify-center mb-8">
-            <a href="index.html" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 mx-2 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                Add/Edit Structures
-            </a>
-            <a href="structures.html" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-gray-800 transition duration-300 mx-2 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                View/Search Structures
-            </a>
-            <a href="analysis.html" class="bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-teal-700 transition duration-300 mx-2 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 21h18" />
-                </svg>
-                Analyze NMR Data
-            </a>
-        </div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <button id="toggleFormBtn" class="bg-blue-600 text-white py-3 px-6 rounded-lg shadow hover:bg-blue-700 transition duration-300 flex items-center justify-center w-full">
-                <svg id="plusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <svg id="minusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" />
-                </svg>
-                <span id="buttonText">Add New Structure</span>
-            </button>
-
-            <button id="viewAllBtn" class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 w-full">
-                View All Structures
-            </button>
-
-            <form id="nmrEntryForm" class="space-y-6 mt-6 hidden">
-                <input type="hidden" id="entryId">
-                
-                <div>
-                    <label for="nameInput" class="block text-sm font-medium text-gray-700">Structure Name *</label>
-                    <input type="text" id="nameInput" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+    <div class="flex flex-col min-h-screen">
+        <nav class="bg-white shadow-md">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <a href="/" class="text-2xl font-extrabold text-indigo-700">NMR Structure Database</a>
+                <div class="flex space-x-4">
+                    <a href="index.html" class="nav-link">Add/Edit Structure</a>
+                    <a href="structures.html" class="nav-link">View Structures</a>
+                    <a href="analysis.html" class="nav-link">Analyze NMR Data</a>
                 </div>
-
-                <div class="mb-6"> 
-                    <label class="block text-sm font-medium text-gray-700">Structure Image</label>
-                    <div class="mt-2 flex items-center">
-                        <label for="imageUpload" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Choose Image
-                        </label>
-                        <span id="imageFileName" class="ml-2 text-sm text-gray-500">No image selected</span>
-                    </div>
-                    <input type="file" id="imageUpload" accept="image/*" class="hidden">
-                    <div id="imagePreview" class="mt-2">
-                        <img id="previewImage" class="max-h-40 rounded border border-gray-200">
-                    </div>
-                    <input type="hidden" id="structureImage">
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="hsqcPeaks" class="block text-sm font-medium text-gray-700">HSQC Peaks (1H, 13C)</label>
-                        <textarea id="hsqcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
-                        <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift (one peak per line)</p>
-                    </div>
-                    <div>
-                        <label for="cosyPeaks" class="block text-sm font-medium text-gray-700">COSY Peaks (1H, 1H)</label>
-                        <textarea id="cosyPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 7.26&#10;5.12 3.45&#10;..."></textarea>
-                        <p class="text-xs text-gray-500 mt-1">Format: 1H_shift1 1H_shift2 (one peak per line)</p>
-                    </div>
-                    <div>
-                        <label for="hmbcPeaks" class="block text-sm font-medium text-gray-700">HMBC Peaks (1H, 13C)</label>
-                        <textarea id="hmbcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
-                        <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift (one peak per line)</p>
-                    </div>
-                </div>
-
-                <div class="flex justify-end space-x-2">
-                    <button type="button" onclick="clearForm()" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
-                        Clear Form
-                    </button>
-                    <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
-                        <span id="submitText">Save Structure</span>
-                        <span id="submitSpinner" class="loading-spinner ml-2 animate-spin inline-block w-4 h-4 border-2 border-t-2 border-t-white border-indigo-200 rounded-full"></span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="viewAllModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">All Structures</h2>
-                <button onclick="closeViewAllModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
-                    &times;
-                </button>
             </div>
-            <div id="allStructuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        </nav>
+
+        <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Add/Edit NMR Structure</h1>
+
+            <div id="message" class="hidden bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+                <p id="message-text" class="font-bold"></p>
+            </div>
+            <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+                <p id="error-message-text" class="font-bold"></p>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <button id="toggleFormBtn" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 flex items-center justify-center w-full">
+                    <svg id="plusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    <svg id="minusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" />
+                    </svg>
+                    <span id="buttonText">Add New Structure</span>
+                </button>
+
+                <button id="viewAllBtn" class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 w-full">
+                    View All Structures
+                </button>
+
+                <form id="nmrEntryForm" class="space-y-6 mt-6 hidden">
+                    <input type="hidden" id="entryId">
+                    
+                    <div>
+                        <label for="nameInput" class="block text-sm font-medium text-gray-700">Structure Name *</label>
+                        <input type="text" id="nameInput" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    </div>
+
+                    <div class="mb-6"> 
+                        <label class="block text-sm font-medium text-gray-700">Structure Image</label>
+                        <div class="mt-2 flex items-center">
+                            <label for="imageUpload" class="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                Choose Image
+                            </label>
+                            <span id="imageFileName" class="ml-2 text-sm text-gray-500">No image selected</span>
+                        </div>
+                        <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                        <div id="imagePreview" class="mt-2">
+                            <img id="previewImage" class="max-h-40 rounded border border-gray-200">
+                        </div>
+                        <input type="hidden" id="structureImage">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="hsqcPeaks" class="block text-sm font-medium text-gray-700">HSQC Peaks (1H, 13C)</label>
+                            <textarea id="hsqcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift (one peak per line)</p>
+                        </div>
+                        <div>
+                            <label for="cosyPeaks" class="block text-sm font-medium text-gray-700">COSY Peaks (1H, 1H)</label>
+                            <textarea id="cosyPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 7.26&#10;5.12 3.45&#10;..."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Format: 1H_shift1 1H_shift2 (one peak per line)</p>
+                        </div>
+                        <div>
+                            <label for="hmbcPeaks" class="block text-sm font-medium text-gray-700">HMBC Peaks (1H, 13C)</label>
+                            <textarea id="hmbcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift (one peak per line)</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="clearForm()" class="bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                            Clear Form
+                        </button>
+                        <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
+                            <span id="submitText">Save Structure</span>
+                            <span id="submitSpinner" class="loading-spinner ml-2 animate-spin inline-block w-4 h-4 border-2 border-t-2 border-t-white border-indigo-200 rounded-full"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+
+        <div id="viewAllModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">All Structures</h2>
+                    <button onclick="closeViewAllModal()" class="text-gray-500 hover:text-gray-700 text-2xl">
+                        &times;
+                    </button>
                 </div>
+                <div id="allStructuresContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+            </div>
         </div>
+
+        <footer class="bg-gray-800 text-white text-center p-4">
+            <p>&copy; 2023 NMR Structure Database. All rights reserved.</p>
+        </footer>
     </div>
 
     <script>
