@@ -137,9 +137,9 @@
         const searchButton = document.getElementById('searchButton');
         const clearSearchButton = document.getElementById('clearSearchButton');
         const nameSearchInput = document.getElementById('nameSearchInput');
-        const peakSearchInput1 = document.getElementById('peakSearchInput1'); // New
-        const peakSearchInput2 = document.getElementById('peakSearchInput2'); // New
-        const peakTypeRadios = document.querySelectorAll('input[name="peakType"]'); // New
+        const peakSearchInput1 = document.getElementById('peakSearchInput1');
+        const peakSearchInput2 = document.getElementById('peakSearchInput2');
+        const peakTypeRadios = document.querySelectorAll('input[name="peakType"]');
         const searchSpinner = document.getElementById('searchSpinner');
         const resultsMessageDiv = document.getElementById('resultsMessage');
         const resultsMessageText = document.getElementById('resultsMessageText');
@@ -162,12 +162,27 @@
                 resultsMessageDiv.classList.remove('bg-blue-100', 'border-blue-400', 'text-blue-700');
                 resultsMessageDiv.classList.add('bg-red-100', 'border-red-400', 'text-red-700');
             } else {
-                resultsMessageDiv.classList.remove('bg-red-100', 'border-red-400', 'text-red-700');
+                resultsMessageDiv.classList.remove('bg-red-100', 'border-red-400', 'text-blue-700');
                 resultsMessageDiv.classList.add('bg-blue-100', 'border-blue-400', 'text-blue-700');
             }
             setTimeout(() => {
                 resultsMessageDiv.classList.add('hidden');
             }, 5000);
+        }
+
+        // Helper function to format peaks for display
+        function formatPeaks(peaks) {
+            if (!peaks || peaks.length === 0) return 'N/A';
+            if (typeof peaks === 'string') return peaks; // If it's somehow already a string
+
+            // Handles array of arrays (tuples) like [[1.2, 4.5], [6.7, 8.9]]
+            return peaks.map(peak => {
+                if (Array.isArray(peak)) {
+                    // Assuming peak is [H_shift, C_shift] or [H1_shift, H2_shift]
+                    return peak.map(val => val.toFixed(2)).join(' '); // Format to 2 decimal places
+                }
+                return peak.toFixed(2); // For single float peaks, though not currently used this way
+            }).join('\n'); // Join each peak pair with a newline
         }
 
         async function fetchEntries(peakSearch1 = '', peakSearch2 = '', peakType = 'all', nameSearchTerm = '') {
@@ -179,18 +194,22 @@
             let url = `${API_BASE_URL}?`;
             const params = [];
 
-            if (peakSearch1) {
-                params.push(`peak1=${encodeURIComponent(peakSearch1)}`);
-            }
-            // Only add peak2 if a specific peakType is selected (not 'all')
-            if (peakSearch2 && (peakType === 'hsqc' || peakType === 'cosy' || peakType === 'hmbc')) {
-                params.push(`peak2=${encodeURIComponent(peakSearch2)}`);
-            }
-            if (peakType !== 'all') { // Only include peakType if it's not 'all'
-                params.push(`peakType=${encodeURIComponent(peakType)}`);
-            }
             if (nameSearchTerm) {
                 params.push(`name=${encodeURIComponent(nameSearchTerm)}`);
+            }
+            if (peakSearch1) {
+                params.push(`hShift=${encodeURIComponent(peakSearch1)}`);
+            }
+            if (peakSearch2) {
+                // Determine if it's cShift or h2Shift based on peakType
+                if (peakType === 'cosy') {
+                    params.push(`h2Shift=${encodeURIComponent(peakSearch2)}`);
+                } else { // hsqc, hmbc, or all
+                    params.push(`cShift=${encodeURIComponent(peakSearch2)}`);
+                }
+            }
+            if (peakType && peakType !== 'all') { // Only include peakType if it's not 'all'
+                params.push(`peakType=${encodeURIComponent(peakType)}`);
             }
 
             url += params.join('&');
@@ -199,15 +218,18 @@
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // If response is not OK, it might still return JSON with an error message
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
-                const result = await response.json();
+                const entries = await response.json(); // Expect a direct array response or an error object
 
-                if (!result.success) {
-                    throw new Error(result.error || 'Failed to fetch entries');
+                console.log("Received entries:", entries); // Debugging
+
+                if (!Array.isArray(entries)) { // If it's not an array, it's an unexpected format or an error
+                    throw new Error(entries.error || 'Unexpected response format');
                 }
 
-                const entries = result.data || [];
                 if (entries.length === 0) {
                     noResultsMessage.classList.remove('hidden');
                 } else {
@@ -220,28 +242,28 @@
                             `}
                             <div class="p-4 flex-grow flex flex-col">
                                 <h3 class="text-xl font-bold mb-2">${entry.name || 'Unnamed Structure'}</h3>
-                                <p class="text-sm text-gray-600 mb-4">ID: ${entry.id}</p>
+                                <p class="text-sm text-gray-600 mb-4">ID: ${entry._id}</p>
                                 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm flex-grow">
                                     <div>
                                         <h4 class="font-semibold mb-1 text-gray-700">HSQC Peaks (1H, 13C)</h4>
-                                        <pre class="peak-list">${entry.hsqc_peaks || 'N/A'}</pre>
+                                        <pre class="peak-list">${formatPeaks(entry.hsqc_peaks)}</pre>
                                     </div>
                                     <div>
                                         <h4 class="font-semibold mb-1 text-gray-700">COSY Peaks (1H, 1H)</h4>
-                                        <pre class="peak-list">${entry.cosy_peaks || 'N/A'}</pre>
+                                        <pre class="peak-list">${formatPeaks(entry.cosy_peaks)}</pre>
                                     </div>
                                     <div>
                                         <h4 class="font-semibold mb-1 text-gray-700">HMBC Peaks (1H, 13C)</h4>
-                                        <pre class="peak-list">${entry.hmbc_peaks || 'N/A'}</pre>
+                                        <pre class="peak-list">${formatPeaks(entry.hmbc_peaks)}</pre>
                                     </div>
                                 </div>
 
                                 <div class="mt-4 flex space-x-2 justify-end">
-                                    <a href="index.html?editId=${entry.id}" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-300 text-sm">
+                                    <a href="index.html?editId=${entry._id}" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-300 text-sm">
                                         Edit
                                     </a>
-                                    <button onclick="deleteEntry(${entry.id})" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition duration-300 text-sm">
+                                    <button onclick="deleteEntry('${entry._id}')" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition duration-300 text-sm">
                                         Delete
                                     </button>
                                 </div>
