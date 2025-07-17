@@ -203,10 +203,9 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        sample_peaks: 'dummy',          // backend just wants the key present
-                        hsqc_data: hsqcPeaks,
-                        cosy_data: cosyPeaks,
-                        hmbc_data: hmbcPeaks,
+                        hsqc: hsqcPeaks,
+			cosy: cosyPeaks,
+			hmbc: hmbcPeaks,
                         toleranceH: hTolerance,
                         toleranceC: cTolerance,
                         num_contour_levels: contourLevels
