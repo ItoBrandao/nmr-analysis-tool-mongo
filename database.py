@@ -33,36 +33,44 @@ logger = logging.getLogger(__name__)
 try:
     if MONGO_URI:
         client = MongoClient(MONGO_URI)
-        # The ping command is cheap and does not require auth.
         client.admin.command('ping')
         logger.info("Successfully connected to MongoDB Atlas!")
+        db = client[DB_NAME]
+        entries_collection = db["entries"]
+        # --- NEW LOCATION FOR DATA INSERTION ---
+        logger.info(f"Checking if '{DB_NAME}' database and 'entries' collection need initial data...")
+        if entries_collection.count_documents({}) == 0:
+            insert_initial_data_from_json()
+        else:
+            logger.info("Entries collection is not empty, skipping initial data insertion.")
+        # --- END NEW LOCATION ---
     else:
         logger.warning("MONGO_URI environment variable not set. Attempting local MongoDB fallback.")
-        client = MongoClient('mongodb://localhost:27017/')
-        client.admin.command('ping')
-        logger.info("Connected to local MongoDB instance (fallback).")
-
-    # If client is successfully established, then get db and collection
-    if client:
-        db = client[DB_NAME]
-        entries_collection = db.entries
-        logger.info(f"Database '{DB_NAME}' and collection 'entries' initialized.")
         try:
-            logger.info(f"Collection count: {entries_collection.count_documents({})}")
-        except Exception as e:
-            logger.error(f"Could not get collection count after initialization: {e}")
-    else:
-        logger.error("MongoDB client could not be established, 'db' and 'entries_collection' remain None.")
-
+            client = MongoClient('mongodb://localhost:27017/')
+            db = client[DB_NAME]
+            entries_collection = db["entries"]
+            logger.info("Successfully connected to local MongoDB (fallback).")
+            # For local testing, you might still want to call it here too
+            if entries_collection.count_documents({}) == 0:
+                insert_initial_data_from_json()
+            else:
+                logger.info("Entries collection is not empty locally, skipping initial data insertion.")
+        except ConnectionFailure as e:
+            logger.error(f"Could not connect to local MongoDB: {e}")
+            client = None
+            db = None
+            entries_collection = None
 except ConnectionFailure as e:
-    logger.error(f"MongoDB connection failed: {e}")
-    entries_collection = None # Explicitly ensure it's None on failure
+    logger.error(f"Could not connect to MongoDB Atlas: {e}")
+    client = None
+    db = None
+    entries_collection = None
 except OperationFailure as e:
-    logger.error(f"MongoDB operation failed (authentication/authorization): {e}")
-    entries_collection = None # Explicitly ensure it's None on failure
-except Exception as e:
-    logger.error(f"An unexpected error occurred during MongoDB setup: {e}")
-    entries_collection = None # Explicitly ensure it's None on failure
+    logger.error(f"MongoDB operation failed (authentication/authorization issue?): {e}")
+    client = None
+    db = None
+    entries_collection = None
 
 # Add these debug lines right after the connection attempt
 logger.info(f"MongoDB connection status: {client is not None}")
@@ -609,16 +617,3 @@ def analyze_nmr_route():
             'success': False,
             'error': str(e)
         }), 500
-
-if __name__ == '__main__':
-    logger.info(f"Starting NMR Structure Database server...")
-    
-    # Only call insert_initial_data_from_json if entries_collection is available
-    if entries_collection is not None:
-        insert_initial_data_from_json()
-    else:
-        logger.error("Cannot insert initial data: entries_collection is not initialized during startup. Check MongoDB connection.")
-    
-    # Render automatically sets the PORT environment variable
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
