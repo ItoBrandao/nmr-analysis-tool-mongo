@@ -212,10 +212,10 @@ def delete_entry(entry_id):
             logger.info(f"Entry {entry_id} deleted successfully. Count: {result.deleted_count}")
             return True
         else:
-            logger.warning(f"No entry found for deletion with ID: {entry_id}")
+            logger.warning(f"No entry found for deletion with ID: {id}")
             return False
     except Exception as e:
-        logger.exception(f"Error deleting entry {entry_id}:")
+        logger.exception(f"Error deleting entry {id}:")
         return False
 
 def find_entries_by_name(name):
@@ -375,6 +375,11 @@ def analysis():
 @app.route('/api/entries', methods=['GET'])
 def get_entries_route():
     try:
+        # Check if entries_collection is initialized BEFORE proceeding with any queries
+        if entries_collection is None:
+            logger.error("API GET /api/entries: entries_collection is not initialized. Returning 500 with specific error.")
+            return jsonify({'error': 'Database not ready. Please check server logs for connection issues.'}), 500
+
         # Get query parameters
         name_query = request.args.get('name')
         peak_type = request.args.get('peakType')
@@ -392,8 +397,8 @@ def get_entries_route():
         elif peak_type:
             entries = find_entries_by_peak(peak_type, h_shift, c_shift, h2_shift)
         else:
-            entries = get_all_entries()
-        
+            entries = get_all_entries() # This should return [] if entries_collection is None, but we checked above
+
         # Ensure _id is string for all entries before jsonify
         cleaned_entries = [_recursive_clean_for_json(entry) for entry in entries]
         
@@ -517,7 +522,7 @@ def delete_entry_route(id):
 
         success = delete_entry(id)
         if success:
-            logger.info(f"Delete Entry {id}: Successfully deleted entry.")
+            logger.info(f"Entry {id}: Successfully deleted entry.")
             return jsonify({
                 'success': True,
                 'message': 'Entry deleted successfully'
