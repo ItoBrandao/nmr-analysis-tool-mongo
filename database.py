@@ -677,11 +677,13 @@ def analyze_nmr_route():
             logger.warning("Analyze NMR: No database entries found for comparison.")
             return jsonify({'success': False, 'error': 'No NMR structures in database for analysis.'}), 404
 
-        results, plots = detector.analyze_mixture(
-            sample_peaks,
-            all_database_entries,
-            tolerance_h=current_tolerance_h,
-            tolerance_c=current_tolerance_c
+        results = detector.analyze_mixture(
+           	hsqc_data_str,
+            	cosy_data_str,
+           	hmbc_data_str,
+            	all_database_entries,
+		tolerance_h=current_tolerance_h,
+		tolerance_c=current_tolerance_c
         )
         
         # Apply _recursive_clean_for_json to the results dictionary
