@@ -680,8 +680,8 @@ def analyze_nmr_route():
         results, plots = detector.analyze_mixture(
             sample_peaks,
             all_database_entries,
-            tolerance_h_match=current_tolerance_h,
-            tolerance_c_match=current_tolerance_c
+            tolerance_h=current_tolerance_h,
+            tolerance_c=current_tolerance_c
         )
         
         # Apply _recursive_clean_for_json to the results dictionary
