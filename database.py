@@ -21,51 +21,53 @@ app = Flask(__name__)
 MONGO_URI = os.environ.get('MONGO_URI')
 DB_NAME = "nmr_database_app" # This will be the name of your database inside MongoDB Atlas
 
-client = None # Initialize client and db to None
-db = None
+client = None # Initialize client to None
+db = None # Initialize db to None
 entries_collection = None # Initialize entries_collection to None
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-if not MONGO_URI:
-    logger.error("MONGO_URI environment variable not set. Please set it for database connection.")
-    # Fallback for local testing if MONGO_URI is not set, using a local MongoDB instance
-    # You would need to run a local MongoDB server for this to work, otherwise db will be None.
-    try:
-        client = MongoClient('mongodb://localhost:27017/')
-        db = client[DB_NAME]
-        entries_collection = db.entries
-        logger.info("Connected to local MongoDB instance (fallback).")
-    except ConnectionFailure as e:
-        logger.error(f"Could not connect to local MongoDB: {e}")
-else:
-    try:
-        # Use the MONGO_URI from Render environment variables
+# Attempt to connect to MongoDB
+try:
+    if MONGO_URI:
         client = MongoClient(MONGO_URI)
-        db = client[DB_NAME]
-        entries_collection = db.entries
         # The ping command is cheap and does not require auth.
         client.admin.command('ping')
         logger.info("Successfully connected to MongoDB Atlas!")
-    except ConnectionFailure as e:
-        logger.error(f"MongoDB connection failed: {e}")
-    except OperationFailure as e:
-        logger.error(f"MongoDB operation failed (authentication/authorization): {e}")
-    except Exception as e:
-        logger.error(f"An unexpected error occurred during MongoDB connection: {e}")
+    else:
+        logger.warning("MONGO_URI environment variable not set. Attempting local MongoDB fallback.")
+        client = MongoClient('mongodb://localhost:27017/')
+        client.admin.command('ping')
+        logger.info("Connected to local MongoDB instance (fallback).")
+
+    # If client is successfully established, then get db and collection
+    if client:
+        db = client[DB_NAME]
+        entries_collection = db.entries
+        logger.info(f"Database '{DB_NAME}' and collection 'entries' initialized.")
+        try:
+            logger.info(f"Collection count: {entries_collection.count_documents({})}")
+        except Exception as e:
+            logger.error(f"Could not get collection count after initialization: {e}")
+    else:
+        logger.error("MongoDB client could not be established, 'db' and 'entries_collection' remain None.")
+
+except ConnectionFailure as e:
+    logger.error(f"MongoDB connection failed: {e}")
+    entries_collection = None # Explicitly ensure it's None on failure
+except OperationFailure as e:
+    logger.error(f"MongoDB operation failed (authentication/authorization): {e}")
+    entries_collection = None # Explicitly ensure it's None on failure
+except Exception as e:
+    logger.error(f"An unexpected error occurred during MongoDB setup: {e}")
+    entries_collection = None # Explicitly ensure it's None on failure
 
 # Add these debug lines right after the connection attempt
 logger.info(f"MongoDB connection status: {client is not None}")
 logger.info(f"Database accessible: {db is not None}")
-if entries_collection is not None: # Corrected from previous error
-    try:
-        logger.info(f"Collection count: {entries_collection.count_documents({})}")
-    except Exception as e:
-        logger.error(f"Could not get collection count: {e}")
-else:
-    logger.info("Collection: Not initialized")
+logger.info(f"Collection initialized: {entries_collection is not None}")
 
 
 CORS(app) # Enable CORS for all routes
@@ -114,8 +116,8 @@ def parse_peaks_string(peaks_str):
     return peaks
 
 def add_entry(data):
-    if entries_collection is None: # Corrected line
-        logger.error("Database collection is not initialized.")
+    if entries_collection is None:
+        logger.error("Database collection is not initialized, cannot add entry.")
         return None
     try:
         # Generate a new unique ID
@@ -142,8 +144,8 @@ def add_entry(data):
         return None
 
 def get_all_entries():
-    if entries_collection is None: # Corrected line
-        logger.error("Database collection is not initialized.")
+    if entries_collection is None:
+        logger.error("Database collection is not initialized, cannot fetch all entries.")
         return []
     try:
         entries = list(entries_collection.find().sort("name", 1)) # Sort by name
@@ -157,8 +159,8 @@ def get_all_entries():
         return []
 
 def get_entry_by_id(entry_id):
-    if entries_collection is None: # Corrected line
-        logger.error("Database collection is not initialized.")
+    if entries_collection is None:
+        logger.error("Database collection is not initialized, cannot get entry by ID.")
         return None
     try:
         # Use ObjectId for querying by _id
@@ -174,8 +176,8 @@ def get_entry_by_id(entry_id):
         return None
 
 def update_entry(entry_id, data):
-    if entries_collection is None: # Corrected line
-        logger.error("Database collection is not initialized.")
+    if entries_collection is None:
+        logger.error("Database collection is not initialized, cannot update entry.")
         return False
     try:
         # Prepare data for update, excluding _id
@@ -187,10 +189,6 @@ def update_entry(entry_id, data):
             if key in update_data and isinstance(update_data[key], str):
                 update_data[key] = parse_peaks_string(update_data[key])
             elif key not in update_data:
-                # If key not in update_data, it means frontend didn't send it.
-                # We should NOT set it to empty unless explicitly required,
-                # as it might clear existing data if the field was just not edited.
-                # For now, let's assume if it's sent, it's the full new value.
                 pass # Do nothing if key is not present in update_data
 
         result = entries_collection.update_one({'_id': entry_id}, {'$set': update_data})
@@ -205,8 +203,8 @@ def update_entry(entry_id, data):
         return False
 
 def delete_entry(entry_id):
-    if entries_collection is None: # Corrected line
-        logger.error("Database collection is not initialized.")
+    if entries_collection is None:
+        logger.error("Database collection is not initialized, cannot delete entry.")
         return False
     try:
         result = entries_collection.delete_one({'_id': entry_id})
@@ -221,8 +219,8 @@ def delete_entry(entry_id):
         return False
 
 def find_entries_by_name(name):
-    if entries_collection is None: # Corrected line
-        logger.error("Database collection is not initialized.")
+    if entries_collection is None:
+        logger.error("Database collection is not initialized, cannot find entries by name.")
         return []
     try:
         # Case-insensitive search using regex
@@ -236,8 +234,8 @@ def find_entries_by_name(name):
         return []
 
 def find_entries_by_peak(peak_type, h_shift, c_shift=None, h2_shift=None):
-    if entries_collection is None: # Corrected line
-        logger.error("Database collection is not initialized.")
+    if entries_collection is None:
+        logger.error("Database collection is not initialized, cannot find entries by peak.")
         return []
     try:
         query = {}
@@ -313,7 +311,8 @@ def find_entries_by_peak(peak_type, h_shift, c_shift=None, h2_shift=None):
         return []
 
 def insert_initial_data_from_json():
-    if entries_collection is None: # Corrected line
+    # Only proceed if entries_collection is successfully initialized
+    if entries_collection is None:
         logger.error("Database collection is not initialized, cannot insert initial data.")
         return
 
@@ -609,10 +608,11 @@ def analyze_nmr_route():
 if __name__ == '__main__':
     logger.info(f"Starting NMR Structure Database server...")
     
-    # Call the function to insert initial data from JSON if the collection is empty
-    # This should run only ONCE, on the very first successful deploy to an empty DB.
-    # You might want to comment this out after the initial data is in MongoDB.
-    insert_initial_data_from_json()
+    # Only call insert_initial_data_from_json if entries_collection is available
+    if entries_collection is not None:
+        insert_initial_data_from_json()
+    else:
+        logger.error("Cannot insert initial data: entries_collection is not initialized during startup. Check MongoDB connection.")
     
     # Render automatically sets the PORT environment variable
     port = int(os.environ.get('PORT', 5000))
