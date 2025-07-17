@@ -203,12 +203,13 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        hsqc_peaks: hsqcPeaks,
-                        cosy_peaks: cosyPeaks,
-                        hmbc_peaks: hmbcPeaks,
-                        num_contour_levels: contourLevels,
+                        sample_peaks: 'dummy',          // backend just wants the key present
+                        hsqc_data: hsqcPeaks,
+                        cosy_data: cosyPeaks,
+                        hmbc_data: hmbcPeaks,
                         toleranceH: hTolerance,
-                        toleranceC: cTolerance
+                        toleranceC: cTolerance,
+                        num_contour_levels: contourLevels
                     })
                 });
 
