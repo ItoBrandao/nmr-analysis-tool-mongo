@@ -1,1 +1,1 @@
-web: gunicorn --bind 0.0.0.0:$PORT database:app
+web: gunicorn --bind 0.0.0.0:$PORT database:app --timeout 120 --graceful-timeout 120

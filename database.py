@@ -117,13 +117,8 @@ try:
         db = client[DB_NAME]
         entries_collection = db["entries"]
         
-        # --- NEW LOCATION FOR CALLING insert_initial_data_from_json() ---
-        logger.info(f"Checking if '{DB_NAME}' database and 'entries' collection need initial data...")
-        if entries_collection.count_documents({}) == 0:
-            insert_initial_data_from_json() # Now the function is defined above!
-        else:
-            logger.info("Entries collection is not empty, skipping initial data insertion.")
-        # --- END NEW LOCATION FOR CALL ---
+        # Removed the auto-call for insert_initial_data_from_json() from here.
+        # It will now be called lazily on the first /api/entries GET request.
 
     else:
         logger.warning("MONGO_URI environment variable not set. Attempting local MongoDB fallback.")
@@ -132,10 +127,8 @@ try:
             db = client[DB_NAME]
             entries_collection = db["entries"]
             logger.info("Successfully connected to local MongoDB (fallback).")
-            if entries_collection.count_documents({}) == 0:
-                insert_initial_data_from_json() # Call for local fallback too
-            else:
-                logger.info("Entries collection is not empty locally, skipping initial data insertion.")
+            # Removed the auto-call for insert_initial_data_from_json() from here.
+            # It will now be called lazily on the first /api/entries GET request.
         except ConnectionFailure as e:
             logger.error(f"Could not connect to local MongoDB: {e}")
             client = None
@@ -453,6 +446,11 @@ def get_entries_route():
         if entries_collection is None:
             logger.error("API GET /api/entries: entries_collection is not initialized. Returning 500 with specific error.")
             return jsonify({'error': 'Database not ready. Please check server logs for connection issues.'}), 500
+
+        # Lazy initialization: If the collection is empty, insert initial data
+        if entries_collection.count_documents({}) == 0:
+            logger.info("Entries collection is empty. Inserting initial data on first GET /api/entries request.")
+            insert_initial_data_from_json()
 
         # Get query parameters
         name_query = request.args.get('name')
