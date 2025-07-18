@@ -247,7 +247,7 @@
                     if (!result.success) {
                         throw new Error(result.error || 'Failed to load structure');
                     }
-                    populateFormForEdit(result.data);
+                    populateFormForEdit(result);
                     closeViewAllModal();
                     // Ensure form is visible
                     nmrEntryForm.classList.remove('hidden');
