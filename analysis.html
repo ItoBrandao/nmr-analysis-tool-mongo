@@ -38,11 +38,14 @@
         <header class="flex justify-between items-center mb-6">
             <h1 class="text-4xl font-extrabold text-gray-800">NMR Analysis</h1>
             <nav>
-                <a href="index.html" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                <a href="/" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
                     Add/Edit Structures
                 </a>
-                <a href="structures.html" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ml-3">
+                <a href="/structures.html" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ml-3">
                     View All Structures
+                </a>
+                <a href="/analysis.html" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 ml-3">
+                    Analyze NMR Data
                 </a>
             </nav>
         </header>
@@ -203,9 +206,9 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        hsqc: hsqcPeaks,
-			cosy: cosyPeaks,
-			hmbc: hmbcPeaks,
+                        hsqc_data: hsqcPeaks,
+			cosy_data: cosyPeaks,
+			hmbc_data: hmbcPeaks,
                         toleranceH: hTolerance,
                         toleranceC: cTolerance,
                         num_contour_levels: contourLevels

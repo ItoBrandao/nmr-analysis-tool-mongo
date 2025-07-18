@@ -206,7 +206,7 @@ def generate_nmr_plots(hsqc_data, cosy_data, hmbc_data, num_contour_levels=15):
 
             if parsed_peaks.empty:
                 logger.info(f"No data for {peak_type} plot. Generating empty plot.")
-                ax.set_title(f"{config['title']} (No Data)")
+                ax.set_title(f"{config['title']} (No peaks provided)")
                 ax.set_xlabel(config['xlabel'])
                 ax.set_ylabel(config['ylabel'])
                 
