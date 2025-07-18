@@ -675,3 +675,83 @@ def analyze_nmr_route():
             'success': False,
             'error': str(e)
         }), 500
+
+# ---------------------------------------------------------------
+# NEW QUICK HSQC MATCHER (Blueprint to avoid separate Procfile)
+# ---------------------------------------------------------------
+from flask import Blueprint, request, render_template_string
+from compare_nmr_peaks import compare_peaks as _compare_peaks   # renamed import
+
+quick_bp = Blueprint('quick_hsqc', __name__, url_prefix='/quick-hsqc')
+
+@quick_bp.route("/")
+def quick_index():
+    return QUICK_HTML
+
+@quick_bp.route("/api/match", methods=["POST"])
+def quick_api():
+    data = request.get_json()
+    peaks  = data.get("peaks", "")
+    d1h    = float(data.get("d1h", 0.06))
+    d13c   = float(data.get("d13c", 0.8))
+    if not peaks.strip():
+        return jsonify({"error": "No peaks provided"}), 400
+    return jsonify(_compare_peaks(peaks, delta_1H=d1h, delta_13C=d13c))
+
+# HTML embedded to avoid templates
+QUICK_HTML = """
+<!doctype html>
+<html>
+<head>
+  <title>Quick HSQC Matcher</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:Arial;margin:40px;background:#f9f9f9}
+    textarea{width:100%;height:160px;font-family:monospace}
+    label{display:block;margin-top:10px}
+    button{margin-top:15px;padding:8px 18px}
+    .results{margin-top:30px}
+    .results ul{margin:0;padding-left:20px}
+  </style>
+</head>
+<body>
+  <h2>Quick HSQC matcher</h2>
+  <p>Paste your HSQC peaks (1H 13C Intensity, one per line):</p>
+  <textarea id="peaks" placeholder="3.31 49.1 1.0\n7.20 128 0.5"></textarea>
+
+  <label>1H tolerance (ppm) <input type="number" id="d1h" value="0.06" step="0.01"></label>
+  <label>13C tolerance (ppm) <input type="number" id="d13c" value="0.8" step="0.1"></label>
+
+  <button onclick="run()">Find matches</button>
+
+  <div class="results">
+    <div id="full"></div>
+    <div id="part"></div>
+  </div>
+
+<script>
+async function run() {
+  const peaks = document.getElementById('peaks').value;
+  const d1h   = document.getElementById('d1h').value;
+  const d13c  = document.getElementById('d13c').value;
+  const res   = await fetch('/quick-hsqc/api/match', {
+                     method:'POST',
+                     headers:{'Content-Type':'application/json'},
+                     body: JSON.stringify({peaks, d1h, d13c})});
+  const json  = await res.json();
+  document.getElementById('full').innerHTML =
+      '<h3>Fully matched</h3><ul>' +
+      (json.fully.length ? json.fully.map(x=>'<li>'+x) : ['<li>None']) +
+      '</ul>';
+  document.getElementById('part').innerHTML =
+      '<h3>Partial (≥50%)</h3><ul>' +
+      (json.partial.length ? json.partial.map(x=>'<li>'+x.id+'  '+x.ratio+'  '+x.percent) : ['<li>None']) +
+      '</ul>';
+}
+</script>
+</body>
+</html>
+"""
+
+# Register the blueprint
+app.register_blueprint(quick_bp)
