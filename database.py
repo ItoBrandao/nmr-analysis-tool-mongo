@@ -188,29 +188,19 @@ def _recursive_clean_for_json(obj):
 
 # Function to parse peak data from string to list of floats/tuples
 def parse_peaks_string(peaks_str):
-    if not peaks_str:
-        return []
     peaks = []
-    # Split by lines and clean each line
-    for line in peaks_str.strip().split('\n'):
-        # Remove any characters that are not digits, periods, or spaces
-        clean_line = re.sub(r'[^\d.\s-]', '', line).strip()
-        if not clean_line:
+    for raw in peaks_str.strip().splitlines():
+        parts = raw.strip().split()
+        # keep only the first two non-empty tokens
+        parts = [p for p in parts if p.strip()]
+        if len(parts) != 2:
             continue
         try:
-            parts = clean_line.split()
-            if len(parts) == 1:
-                # Single value peak (e.g., for 1D NMR) - though current schema expects pairs
-                peaks.append(float(parts[0]))
-            elif len(parts) == 2:
-                # Pair of values (e.g., H, C for HSQC/HMBC or H1, H2 for COSY)
-                val1 = float(parts[0])
-                val2 = float(parts[1])
-                peaks.append((val1, val2))
-            else:
-                logger.warning(f"Skipping malformed peak line: {line.strip()}")
-        except ValueError as e:
-            logger.warning(f"Could not parse peak line '{line.strip()}': {e}")
+            def _mid(s):
+                return (sum(map(float, s.split('-'))) / 2.0) if '-' in s else float(s)
+            peaks.append([_mid(parts[0]), _mid(parts[1])])
+        except ValueError:
+            pass  # silently drop bad lines
     return peaks
 
 def add_entry(data):
