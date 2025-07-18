@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -244,11 +244,10 @@
                     return response.json();
                 })
                 .then(result => {
-                    if (!result.success) {
-                        throw new Error(result.error || 'Failed to load structure');
-                    }
-                    populateFormForEdit(result);
-                    closeViewAllModal();
+                    // The server now sends the data directly, not wrapped in a 'success' object
+                    // So, we pass 'result' directly to populateFormForEdit
+                    populateFormForEdit(result); 
+                    // closeViewAllModal(); // This variable is not defined in this scope, keep commented out
                     // Ensure form is visible
                     nmrEntryForm.classList.remove('hidden');
                     plusIcon.classList.add('hidden');
@@ -262,22 +261,27 @@
         }
 
         function populateFormForEdit(structureData) {
-            entryIdInput.value = structureData.id || '';
+            entryIdInput.value = structureData._id || ''; // Use _id as per server response
             nameInput.value = structureData.name || '';
-            hsqcPeaks.value = structureData.hsqc_peaks || '';
-            cosyPeaks.value = structureData.cosy_peaks || '';
-            hmbcPeaks.value = structureData.hmbc_peaks || '';
             
-            if (structureData.structure_image_base64) {
-                previewImage.src = structureData.structure_image_base64;
-                imagePreview.style.display = 'block';
-                structureImage.value = structureData.structure_image_base64;
-                imageFileName.textContent = 'Uploaded image';
-            } else {
-                imagePreview.style.display = 'none';
-                structureImage.value = '';
-                imageFileName.textContent = 'No image selected';
-            }
+            // Convert array of arrays back to newline-separated strings
+            hsqcPeaks.value = (Array.isArray(structureData.hsqc_peaks)
+                ? structureData.hsqc_peaks.map(p => p.join(' ')).join('\n')
+                : structureData.hsqc_peaks || ''); // Fallback for non-array or empty
+            
+            cosyPeaks.value = (Array.isArray(structureData.cosy_peaks)
+                ? structureData.cosy_peaks.map(p => p.join(' ')).join('\n')
+                : structureData.cosy_peaks || ''); // Fallback for non-array or empty
+            
+            hmbcPeaks.value = (Array.isArray(structureData.hmbc_peaks)
+                ? structureData.hmbc_peaks.map(p => p.join(' ')).join('\n')
+                : structureData.hmbc_peaks || ''); // Fallback for non-array or empty
+            
+            structureImage.value = structureData.structure_image_base64 || '';
+            imageFileName.textContent = structureData.structure_image_base64 ? 'Uploaded image' : 'No image selected';
+            
+            previewImage.src = structureData.structure_image_base64 || '';
+            imagePreview.style.display = structureData.structure_image_base64 ? 'block' : 'none';
         }
 
         function clearForm() {
@@ -310,7 +314,7 @@
                 if (result.success) {
                     showMessage(result.message || 'Structure deleted successfully');
                     // Refresh the view
-                    viewAllBtn.click();
+                    // viewAllBtn.click(); // This variable is not defined in this scope, keep commented out
                 } else {
                     throw new Error(result.error || 'Failed to delete structure');
                 }
