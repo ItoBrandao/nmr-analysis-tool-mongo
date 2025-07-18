@@ -2,7 +2,7 @@ import os
 import uuid
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
-from bson.objectid import ObjectId
+from bson.objectid import ObjectId # Keep this import for potential future use or other parts of the code if they use it
 import pandas as pd
 from flask import Flask, request, jsonify, send_from_directory
 from datetime import datetime
@@ -256,22 +256,8 @@ def get_all_entries():
         logger.exception("Error fetching all entries:")
         return []
 
-def get_entry_by_id(entry_id):
-    if entries_collection is None:
-        logger.error("Database collection is not initialized, cannot get entry by ID.")
-        return None
-    try:
-        # Use ObjectId for querying by _id
-        entry = entries_collection.find_one({'_id': entry_id})
-        if entry:
-            entry['_id'] = str(entry['_id']) # Convert ObjectId to string
-            logger.info(f"Retrieved entry with ID: {entry_id}")
-        else:
-            logger.warning(f"No entry found with ID: {entry_id}")
-        return entry
-    except Exception as e:
-        logger.exception(f"Error fetching entry by ID {entry_id}:")
-        return None
+# Removed the old get_entry_by_id helper function as it's no longer used by the new route handler.
+# If other parts of your application were calling this, they might need adjustment.
 
 def update_entry(entry_id, data):
     if entries_collection is None:
@@ -554,16 +540,18 @@ def add_entry_route():
 @app.route('/api/entries/<id>', methods=['GET'])
 def get_entry_by_id_route(id):
     try:
-        entry = get_entry_by_id(id)
-        if entry:
-            cleaned_entry = _recursive_clean_for_json(entry)
-            return jsonify(cleaned_entry)
-        else:
-            logger.warning(f"Get Entry by ID: Entry with ID {id} not found.")
-            return jsonify({'error': 'Entry not found'}), 404
+        # Directly use the string ID for lookup since it's stored as a UUID string
+        entry = entries_collection.find_one({'_id': id})
     except Exception as e:
-        logger.exception(f"Exception in get_entry_by_id_route for ID {id}:")
+        logger.exception("Error in get_entry_by_id_route")
         return jsonify({'error': str(e)}), 500
+
+    if entry:
+        # Ensure _id is returned as a string (it already is, but good for consistency)
+        entry['_id'] = str(entry['_id']) 
+        return jsonify(entry)
+    else:
+        return jsonify({'error': 'Entry not found'}), 404
 
 
 @app.route('/api/entries/<id>', methods=['PUT', 'OPTIONS'])
