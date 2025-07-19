@@ -72,6 +72,10 @@
             color: #3730a3;
             background-color: #e0e7ff;
         }
+        .active-nav-link {
+            color: #3730a3;
+            background-color: #e0e7ff;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen">
@@ -80,7 +84,7 @@
             <div class="container mx-auto px-4 py-4 flex justify-between items-center">
                 <a href="/" class="text-2xl font-extrabold text-indigo-700">NMR Structure Database</a>
                 <div class="flex space-x-4">
-                    <a href="/" class="nav-link">Add/Edit Structure</a>
+                    <a href="/" class="nav-link active-nav-link">Add/Edit Structure</a>
                     <a href="/structures.html" class="nav-link">View Structures</a>
                     <a href="/analysis.html" class="nav-link">Compare NMR Peaks</a>
                 </div>
@@ -161,8 +165,6 @@
             </div>
         </main>
 
-     
-
         <footer class="bg-gray-800 text-white text-center p-4">
             <p>&copy; 2023 NMR Structure Database. All rights reserved.</p>
         </footer>
@@ -172,7 +174,6 @@
         const API_BASE_URL = '/api/entries';
         
         // DOM Elements
-
         const nmrEntryForm = document.getElementById('nmrEntryForm');
         const toggleFormBtn = document.getElementById('toggleFormBtn');
         const plusIcon = document.getElementById('plusIcon');
@@ -229,12 +230,6 @@
             buttonText.textContent = nmrEntryForm.classList.contains('hidden') ? 'Add New Structure' : 'Hide Form';
         });
 
-      
-
-        function closeViewAllModal() {
-            viewAllModal.classList.add('hidden');
-        }
-
         function loadStructureForEdit(structureId) {
             fetch(`${API_BASE_URL}/${structureId}`)
                 .then(response => {
@@ -244,11 +239,7 @@
                     return response.json();
                 })
                 .then(result => {
-                    // The server now sends the data directly, not wrapped in a 'success' object
-                    // So, we pass 'result' directly to populateFormForEdit
-                    populateFormForEdit(result); 
-                    // closeViewAllModal(); // This variable is not defined in this scope, keep commented out
-                    // Ensure form is visible
+                    populateFormForEdit(result);
                     nmrEntryForm.classList.remove('hidden');
                     plusIcon.classList.add('hidden');
                     minusIcon.classList.remove('hidden');
@@ -261,21 +252,20 @@
         }
 
         function populateFormForEdit(structureData) {
-            entryIdInput.value = structureData._id || ''; // Use _id as per server response
+            entryIdInput.value = structureData._id || '';
             nameInput.value = structureData.name || '';
             
-            // Convert array of arrays back to newline-separated strings
             hsqcPeaks.value = (Array.isArray(structureData.hsqc_peaks)
                 ? structureData.hsqc_peaks.map(p => p.join(' ')).join('\n')
-                : structureData.hsqc_peaks || ''); // Fallback for non-array or empty
+                : structureData.hsqc_peaks || '');
             
             cosyPeaks.value = (Array.isArray(structureData.cosy_peaks)
                 ? structureData.cosy_peaks.map(p => p.join(' ')).join('\n')
-                : structureData.cosy_peaks || ''); // Fallback for non-array or empty
+                : structureData.cosy_peaks || '');
             
             hmbcPeaks.value = (Array.isArray(structureData.hmbc_peaks)
                 ? structureData.hmbc_peaks.map(p => p.join(' ')).join('\n')
-                : structureData.hmbc_peaks || ''); // Fallback for non-array or empty
+                : structureData.hmbc_peaks || '');
             
             structureImage.value = structureData.structure_image_base64 || '';
             imageFileName.textContent = structureData.structure_image_base64 ? 'Uploaded image' : 'No image selected';
@@ -313,8 +303,6 @@
             .then(result => {
                 if (result.success) {
                     showMessage(result.message || 'Structure deleted successfully');
-                    // Refresh the view
-                    // viewAllBtn.click(); // This variable is not defined in this scope, keep commented out
                 } else {
                     throw new Error(result.error || 'Failed to delete structure');
                 }
@@ -388,18 +376,6 @@
             }
         });
 
-        // Close modal when clicking outside
-        // This 'viewAllModal' variable is not defined in this scope.
-        // If it refers to a modal that pops up, ensure it's defined globally or passed.
-        // For now, I'll comment out this part to avoid errors.
-        /*
-        viewAllModal.addEventListener('click', (e) => {
-            if (e.target === viewAllModal) {
-                closeViewAllModal();
-            }
-        });
-        */
-
         function showMessage(message, isError = false) {
             const messageDiv = isError ? document.getElementById('error-message') : document.getElementById('message');
             const textSpan = isError ? document.getElementById('error-message-text') : document.getElementById('message-text');
@@ -433,4 +409,3 @@
     </script>
 </body>
 </html>
-
