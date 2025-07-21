@@ -198,7 +198,8 @@ COMPARE_PAGE = """
             const hmbcPeaks = document.getElementById('hmbcPeaks').value.trim();
 
             if (!hsqcPeaks && !cosyPeaks && !hmbcPeaks) {
-                alert('Please enter at least one set of peaks.');
+                // Using a custom message box instead of alert()
+                showMessage('Please enter at least one set of peaks.', true);
                 return;
             }
 
@@ -216,11 +217,25 @@ COMPARE_PAGE = """
                 }
 
                 const result = await response.json();
-                alert('Comparison results: ' + JSON.stringify(result));
+                // Using a custom message box instead of alert()
+                showMessage('Comparison results: ' + JSON.stringify(result));
             } catch (error) {
-                alert('Error comparing peaks: ' + error.message);
+                // Using a custom message box instead of alert()
+                showMessage('Error comparing peaks: ' + error.message, true);
             }
         });
+
+        // Custom message function (replace alert)
+        function showMessage(message, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+            messageDiv.textContent = message;
+            document.body.appendChild(messageDiv);
+
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000); // Hide after 5 seconds
+        }
     </script>
 </body>
 </html>
