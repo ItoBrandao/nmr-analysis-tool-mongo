@@ -41,6 +41,24 @@
             color: #3730a3;
             background-color: #e0e7ff;
         }
+        .results-section {
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .results-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 0.5rem;
+        }
+        .results-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .results-list li:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen">
@@ -58,83 +76,175 @@
         </nav>
 
         <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">Compare NMR Peaks</h1>
+            <h1 class="text-3xl font-bold text-gray-800 mb-6">Compare HSQC Peaks to Database</h1>
+
+            <div id="message" class="hidden bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+                <p id="message-text" class="font-bold"></p>
+            </div>
+            <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+                <p id="error-message-text" class="font-bold"></p>
+            </div>
 
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <form id="compareForm" class="space-y-6">
                     <div>
-                        <label for="hsqcPeaks" class="block text-sm font-medium text-gray-700">HSQC Peaks (1H, 13C)</label>
-                        <textarea id="hsqcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
+                        <label for="hsqcPeaks" class="block text-sm font-medium text-gray-700">HSQC Peaks (1H, 13C, Intensity)</label>
+                        <textarea id="hsqcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="3.31 49.1 1.0&#10;7.20 128.0 0.5&#10;..."></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift Intensity (one peak per line)</p>
                     </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="d1h" class="block text-sm font-medium text-gray-700">1H Tolerance (ppm)</label>
+                            <input type="number" id="d1h" value="0.06" step="0.01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        </div>
+                        <div>
+                            <label for="d13c" class="block text-sm font-medium text-gray-700">13C Tolerance (ppm)</label>
+                            <input type="number" id="d13c" value="0.8" step="0.1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        </div>
+                    </div>
+
                     <div class="flex justify-end space-x-2">
-                        <button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
-                            Compare Peaks
+                        <button type="submit" id="compareBtn" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center">
+                            Compare to HMDB/BMRB Database
+                            <span id="compareSpinner" class="loading-spinner ml-2 animate-spin inline-block w-4 h-4 border-2 border-t-2 border-t-white border-indigo-200 rounded-full hidden"></span>
                         </button>
                     </div>
                 </form>
             </div>
+
+            <div id="comparisonResults" class="results-section hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Comparison Results</h2>
+                
+                <div class="mb-6">
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Fully Matched Compounds (100%)</h3>
+                    <ul id="fullyMatchedList" class="results-list">
+                        <!-- Fully matched compounds will be listed here -->
+                    </ul>
+                    <p id="noFullyMatched" class="text-gray-600 mt-2 hidden">No compounds found with 100% peak matches.</p>
+                </div>
+
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">Partially Matched Compounds (≥50%)</h3>
+                    <ul id="partiallyMatchedList" class="results-list">
+                        <!-- Partially matched compounds will be listed here -->
+                    </ul>
+                    <p id="noPartiallyMatched" class="text-gray-600 mt-2 hidden">No compounds found with ≥50% peak matches.</p>
+                </div>
+            </div>
         </main>
 
-        <footer class="bg-gray-800 text-white text-center p-4">
+        <footer class="bg-gray-800 text-white text-center p-4 mt-8">
             <p>&copy; 2023 NMR Structure Database. All rights reserved.</p>
         </footer>
     </div>
 
     <script>
-        const API_BASE_URL = '/api/compare';
+        const API_COMPARE_URL = '/api/quick-match';
 
-        document.getElementById('compareForm').addEventListener('submit', async (e) => {
+        // DOM Elements
+        const compareForm = document.getElementById('compareForm');
+        const hsqcPeaksInput = document.getElementById('hsqcPeaks');
+        const d1hInput = document.getElementById('d1h');
+        const d13cInput = document.getElementById('d13c');
+        const compareBtn = document.getElementById('compareBtn');
+        const compareSpinner = document.getElementById('compareSpinner');
+        const comparisonResultsDiv = document.getElementById('comparisonResults');
+        const fullyMatchedList = document.getElementById('fullyMatchedList');
+        const partiallyMatchedList = document.getElementById('partiallyMatchedList');
+        const noFullyMatched = document.getElementById('noFullyMatched');
+        const noPartiallyMatched = document.getElementById('noPartiallyMatched');
+
+        function showMessage(message, isError = false) {
+            const messageDiv = isError ? document.getElementById('error-message') : document.getElementById('message');
+            const textSpan = isError ? document.getElementById('error-message-text') : document.getElementById('message-text');
+            
+            textSpan.textContent = message;
+            messageDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                messageDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        compareForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            console.log("Form submitted"); // Adicionado para depuração
+            const hsqcPeaks = hsqcPeaksInput.value.trim();
+            const d1h = parseFloat(d1hInput.value);
+            const d13c = parseFloat(d13cInput.value);
 
-            const hsqcPeaks = document.getElementById('hsqcPeaks').value.trim();
-            // Removidos cosyPeaks e hmbcPeaks, pois a base de dados só tem HSQC
-
-            if (!hsqcPeaks) { // Atualizado para verificar apenas hsqcPeaks
-                console.log("No HSQC peaks entered"); // Adicionado para depuração
-                // Usando uma caixa de mensagem personalizada em vez de alert()
-                showMessage('Please enter at least one set of HSQC peaks.', true);
+            if (!hsqcPeaks) {
+                showMessage('Please enter HSQC peaks for comparison.', true);
                 return;
             }
 
             try {
-                console.log("Making API call"); // Adicionado para depuração
-                const response = await fetch(API_BASE_URL, {
+                compareBtn.disabled = true;
+                compareSpinner.classList.remove('hidden');
+                comparisonResultsDiv.classList.add('hidden'); // Hide previous results
+
+                const response = await fetch(API_COMPARE_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ hsqcPeaks }) // Enviando apenas hsqcPeaks
+                    body: JSON.stringify({ hsqcPeaks, d1h, d13c })
                 });
 
+                const result = await response.json();
+
                 if (!response.ok) {
-                    console.log("API call failed"); // Adicionado para depuração
-                    throw new Error('Failed to compare peaks.');
+                    throw new Error(result.error || 'Failed to compare peaks.');
                 }
 
-                const result = await response.json();
-                console.log("API call succeeded", result); // Adicionado para depuração
-                // Usando uma caixa de mensagem personalizada em vez de alert()
-                showMessage('Comparison results: ' + JSON.stringify(result));
+                displayComparisonResults(result);
+                showMessage(result.message || 'Comparison completed successfully!');
+
             } catch (error) {
-                console.error("Error comparing peaks:", error); // Adicionado para depuração
-                // Usando uma caixa de mensagem personalizada em vez de alert()
-                showMessage('Error comparing peaks: ' + error.message, true);
+                showMessage(`Error comparing peaks: ${error.message}`, true);
+                console.error("Comparison error:", error);
+            } finally {
+                compareBtn.disabled = false;
+                compareSpinner.classList.add('hidden');
             }
         });
 
-        // Custom message function (replace alert)
-        function showMessage(message, isError = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'}`;
-            messageDiv.textContent = message;
-            document.body.appendChild(messageDiv);
+        function displayComparisonResults(results) {
+            fullyMatchedList.innerHTML = '';
+            partiallyMatchedList.innerHTML = '';
+            noFullyMatched.classList.add('hidden');
+            noPartiallyMatched.classList.add('hidden');
 
-            setTimeout(() => {
-                messageDiv.remove();
-            }, 5000); // Esconder após 5 segundos
+            if (results.fully && results.fully.length > 0) {
+                results.fully.forEach(compoundId => {
+                    const li = document.createElement('li');
+                    li.textContent = compoundId;
+                    fullyMatchedList.appendChild(li);
+                });
+            } else {
+                noFullyMatched.classList.remove('hidden');
+            }
+
+            if (results.partial && results.partial.length > 0) {
+                results.partial.forEach(match => {
+                    const li = document.createElement('li');
+                    // match is like ['compoundA', '1/2', '50.00%']
+                    li.textContent = `${match[0]} (Matched: ${match[1]}, Percentage: ${match[2]})`;
+                    partiallyMatchedList.appendChild(li);
+                });
+            } else {
+                noPartiallyMatched.classList.remove('hidden');
+            }
+
+            comparisonResultsDiv.classList.remove('hidden');
         }
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            // You can pre-fill with example peaks if desired
+            // hsqcPeaksInput.value = "3.35 49.7 1.0\n7.20 128.1 0.5";
+        });
     </script>
 </body>
 </html>
