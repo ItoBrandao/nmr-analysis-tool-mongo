@@ -83,7 +83,7 @@
                 <div class="flex space-x-4">
                     <a href="/" class="nav-link">Add/Edit Structure</a>
                     <a href="/structures.html" class="nav-link">View Structures</a>
-                    <a href="/analysis.html" class="nav-link bg-indigo-100 text-indigo-700">Compare NMR Peaks</a>
+                    <a href="/analysis.html" class="nav-link">NMR Analysis</a>
                 </div>
             </div>
         </nav>
@@ -117,26 +117,6 @@
                                 <label for="expHmbcPeaks" class="block text-sm font-medium text-gray-700">HMBC Peaks (1H, 13C)</label>
                                 <textarea id="expHmbcPeaks" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="7.26 77.16&#10;5.12 101.3&#10;..."></textarea>
                                 <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift (one peak per line)</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-semibold mb-4">Database Structures</h2>
-                        <div class="mb-4">
-                            <label for="structureSelect" class="block text-sm font-medium text-gray-700">Select Structure</label>
-                            <select id="structureSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                                <option value="">-- Select a structure --</option>
-                            </select>
-                        </div>
-                        <div id="selectedStructureInfo" class="hidden">
-                            <div class="flex items-start mb-4">
-                                <div id="structureImageContainer" class="w-32 h-32 bg-gray-100 rounded-md mr-4 flex items-center justify-center overflow-hidden">
-                                    <img id="structureImage" class="max-w-full max-h-full">
-                                </div>
-                                <div>
-                                    <h3 id="structureName" class="text-lg font-semibold"></h3>
-                                    <div id="structurePeaks" class="text-sm text-gray-600 mt-2"></div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -191,11 +171,6 @@
         const API_BASE_URL = '/api/entries';
         
         // DOM Elements
-        const structureSelect = document.getElementById('structureSelect');
-        const selectedStructureInfo = document.getElementById('selectedStructureInfo');
-        const structureImage = document.getElementById('structureImage');
-        const structureName = document.getElementById('structureName');
-        const structurePeaks = document.getElementById('structurePeaks');
         const compareBtn = document.getElementById('compareBtn');
         const compareSpinner = document.getElementById('compareSpinner');
         const compareText = document.getElementById('compareText');
@@ -214,86 +189,8 @@
         const expCosyPeaks = document.getElementById('expCosyPeaks');
         const expHmbcPeaks = document.getElementById('expHmbcPeaks');
 
-        // Load all structures for selection
-        function loadStructures() {
-            fetch(API_BASE_URL)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(structures => {
-                    structureSelect.innerHTML = '<option value="">-- Select a structure --</option>';
-                    structures.forEach(structure => {
-                        const option = document.createElement('option');
-                        option.value = structure._id;
-                        option.textContent = structure.name;
-                        structureSelect.appendChild(option);
-                    });
-                })
-                .catch(error => {
-                    showMessage(`Error loading structures: ${error.message}`, true);
-                    console.error("Error loading structures:", error);
-                });
-        }
-
-        // Load structure details when selected
-        structureSelect.addEventListener('change', function() {
-            const structureId = this.value;
-            if (!structureId) {
-                selectedStructureInfo.classList.add('hidden');
-                return;
-            }
-
-            fetch(`${API_BASE_URL}/${structureId}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(structure => {
-                    selectedStructureInfo.classList.remove('hidden');
-                    structureName.textContent = structure.name;
-                    
-                    // Set image if available
-                    if (structure.structure_image_base64) {
-                        structureImage.src = structure.structure_image_base64;
-                        structureImage.alt = structure.name;
-                    } else {
-                        structureImage.src = '';
-                        structureImage.alt = 'No image available';
-                    }
-                    
-                    // Display peak counts
-                    let peakInfo = [];
-                    if (structure.hsqc_peaks && structure.hsqc_peaks.length > 0) {
-                        peakInfo.push(`HSQC: ${structure.hsqc_peaks.length} peaks`);
-                    }
-                    if (structure.cosy_peaks && structure.cosy_peaks.length > 0) {
-                        peakInfo.push(`COSY: ${structure.cosy_peaks.length} peaks`);
-                    }
-                    if (structure.hmbc_peaks && structure.hmbc_peaks.length > 0) {
-                        peakInfo.push(`HMBC: ${structure.hmbc_peaks.length} peaks`);
-                    }
-                    
-                    structurePeaks.textContent = peakInfo.join(' | ');
-                })
-                .catch(error => {
-                    showMessage(`Error loading structure details: ${error.message}`, true);
-                    console.error("Error loading structure details:", error);
-                });
-        });
-
         // Compare peaks function
         function comparePeaks() {
-            const structureId = structureSelect.value;
-            if (!structureId) {
-                showMessage('Please select a structure from the database', true);
-                return;
-            }
-
             const tolerance = parseFloat(toleranceInput.value) || 0.05;
             
             // Get experimental peaks
@@ -311,48 +208,46 @@
             compareSpinner.classList.remove('loading-spinner');
             compareText.textContent = 'Comparing...';
 
-            // Get database structure peaks
-            fetch(`${API_BASE_URL}/${structureId}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
+            // Perform comparison
+            fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    hsqc_data: expHsqcPeaks.value,
+                    cosy_data: expCosyPeaks.value,
+                    hmbc_data: expHmbcPeaks.value,
+                    tolerance_h: tolerance,
+                    tolerance_c: tolerance
                 })
-                .then(structure => {
-                    // Parse database peaks
-                    const dbHsqc = Array.isArray(structure.hsqc_peaks) ? structure.hsqc_peaks : parsePeaks(structure.hsqc_peaks || '');
-                    const dbCosy = Array.isArray(structure.cosy_peaks) ? structure.cosy_peaks : parsePeaks(structure.cosy_peaks || '');
-                    const dbHmbc = Array.isArray(structure.hmbc_peaks) ? structure.hmbc_peaks : parsePeaks(structure.hmbc_peaks || '');
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to compare peaks.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Display results
+                displayResults(data.detected_entries, data.unmatched_sample_peaks);
 
-                    // Compare peaks
-                    const hsqcResults = comparePeakSets(expHsqc, dbHsqc, tolerance);
-                    const cosyResults = comparePeakSets(expCosy, dbCosy, tolerance);
-                    const hmbcResults = comparePeakSets(expHmbc, dbHmbc, tolerance);
+                // Show results section
+                resultsSection.classList.remove('hidden');
 
-                    // Display results
-                    displayResults(hsqcResults, hsqcMatches, hsqcStats, 'HSQC');
-                    displayResults(cosyResults, cosyMatches, cosyStats, 'COSY');
-                    displayResults(hmbcResults, hmbcMatches, hmbcStats, 'HMBC');
-
-                    // Show results section
-                    resultsSection.classList.remove('hidden');
-
-                    // Create visualization
-                    createVisualization(hsqcResults, cosyResults, hmbcResults);
-
-                    showMessage('Comparison completed successfully');
-                })
-                .catch(error => {
-                    showMessage(`Error comparing peaks: ${error.message}`, true);
-                    console.error("Error comparing peaks:", error);
-                })
-                .finally(() => {
-                    // Reset button state
-                    compareBtn.disabled = false;
-                    compareSpinner.classList.add('loading-spinner');
-                    compareText.textContent = 'Compare Peaks';
-                });
+                // Create visualization
+                createVisualization(data.detected_entries, data.unmatched_sample_peaks);
+            })
+            .catch(error => {
+                showMessage(`Error comparing peaks: ${error.message}`, true);
+                console.error("Error comparing peaks:", error);
+            })
+            .finally(() => {
+                // Reset button state
+                compareBtn.disabled = false;
+                compareSpinner.classList.add('loading-spinner');
+                compareText.textContent = 'Compare Peaks';
+            });
         }
 
         // Parse peaks from textarea input
@@ -364,147 +259,117 @@
                 .filter(peak => peak.length >= 2 && !isNaN(peak[0]) && !isNaN(peak[1]));
         }
 
-        // Compare two sets of peaks with given tolerance
-        function comparePeakSets(expPeaks, dbPeaks, tolerance) {
-            if (expPeaks.length === 0 || dbPeaks.length === 0) {
-                return {
-                    matches: [],
-                    expPeaks: expPeaks,
-                    dbPeaks: dbPeaks,
-                    matchCount: 0,
-                    totalExp: expPeaks.length,
-                    totalDb: dbPeaks.length
-                };
+        // Display comparison results
+        function displayResults(detectedEntries, unmatchedPeaks) {
+            // Clear previous results
+            hsqcMatches.innerHTML = '';
+            cosyMatches.innerHTML = '';
+            hmbcMatches.innerHTML = '';
+            hsqcStats.textContent = '';
+            cosyStats.textContent = '';
+            hmbcStats.textContent = '';
+
+            if (detectedEntries.length === 0) {
+                showMessage('No matches found within tolerance', true);
+                return;
             }
 
-            const matches = [];
-            
-            // For each experimental peak, find matching database peaks
-            expPeaks.forEach(expPeak => {
-                dbPeaks.forEach(dbPeak => {
-                    // Compare all dimensions
-                    let isMatch = true;
-                    for (let i = 0; i < Math.min(expPeak.length, dbPeak.length); i++) {
-                        if (Math.abs(expPeak[i] - dbPeak[i]) > tolerance) {
-                            isMatch = false;
-                            break;
-                        }
-                    }
-                    
-                    if (isMatch) {
-                        matches.push({
-                            expPeak: expPeak,
-                            dbPeak: dbPeak
-                        });
-                    }
-                });
+            detectedEntries.forEach(entry => {
+                const entryDiv = document.createElement('div');
+                entryDiv.classList.add('bg-gray-100', 'p-4', 'mb-4', 'rounded-lg');
+                entryDiv.innerHTML = `
+                    <h3 class="text-lg font-semibold">${entry.compound.name}</h3>
+                    <p class="text-sm text-gray-600">Match Score: ${entry.match_score.toFixed(2)}</p>
+                    <p class="text-sm text-gray-600">HSQC Matches: ${entry.details.hsqc_matches}</p>
+                    <p class="text-sm text-gray-600">COSY Matches: ${entry.details.cosy_matches}</p>
+                    <p class="text-sm text-gray-600">HMBC Matches: ${entry.details.hmbc_matches}</p>
+                `;
+                hsqcMatches.appendChild(entryDiv);
             });
 
-            return {
-                matches: matches,
-                expPeaks: expPeaks,
-                dbPeaks: dbPeaks,
-                matchCount: matches.length,
-                totalExp: expPeaks.length,
-                totalDb: dbPeaks.length
-            };
-        }
-
-        // Display comparison results
-        function displayResults(results, container, statsContainer, peakType) {
-            if (results.totalExp === 0) {
-                container.innerHTML = `<p class="text-gray-500">No experimental ${peakType} peaks provided</p>`;
-                statsContainer.textContent = '';
-                return;
+            if (unmatchedPeaks.hsqc.length > 0) {
+                hsqcStats.textContent = `Unmatched HSQC Peaks: ${unmatchedPeaks.hsqc.length}`;
             }
-
-            if (results.totalDb === 0) {
-                container.innerHTML = `<p class="text-gray-500">No ${peakType} peaks in database structure</p>`;
-                statsContainer.textContent = '';
-                return;
+            if (unmatchedPeaks.cosy.length > 0) {
+                cosyStats.textContent = `Unmatched COSY Peaks: ${unmatchedPeaks.cosy.length}`;
             }
-
-            if (results.matchCount === 0) {
-                container.innerHTML = `<p class="text-gray-500">No ${peakType} matches found within tolerance</p>`;
-            } else {
-                let html = '<div class="space-y-2">';
-                results.matches.forEach(match => {
-                    html += `<div class="p-2 rounded match-highlight">
-                        <span class="font-medium">Exp:</span> ${match.expPeak.join(', ')} 
-                        <span class="font-medium ml-2">DB:</span> ${match.dbPeak.join(', ')}
-                    </div>`;
-                });
-                html += '</div>';
-                container.innerHTML = html;
+            if (unmatchedPeaks.hmbc.length > 0) {
+                hmbcStats.textContent = `Unmatched HMBC Peaks: ${unmatchedPeaks.hmbc.length}`;
             }
-
-            // Display stats
-            const matchPercentage = (results.matchCount / results.totalExp * 100).toFixed(1);
-            statsContainer.textContent = `${results.matchCount} of ${results.totalExp} experimental peaks matched (${matchPercentage}%)`;
         }
 
         // Create visualization plot
-        function createVisualization(hsqcResults, cosyResults, hmbcResults) {
+        function createVisualization(detectedEntries, unmatchedPeaks) {
             // Prepare data for plotting
             const traces = [];
             
-            if (hsqcResults.totalExp > 0 && hsqcResults.totalDb > 0) {
-                traces.push({
-                    x: hsqcResults.expPeaks.map(p => p[0]),
-                    y: hsqcResults.expPeaks.map(p => p[1]),
-                    mode: 'markers',
-                    type: 'scatter',
-                    name: 'Exp HSQC',
-                    marker: { color: 'blue', size: 10 }
-                });
+            detectedEntries.forEach(entry => {
+                const dbHsqcPeaks = entry.compound.hsqc_peaks;
+                const dbCosyPeaks = entry.compound.cosy_peaks;
+                const dbHmbcPeaks = entry.compound.hmbc_peaks;
+
+                if (dbHsqcPeaks.length > 0) {
+                    traces.push({
+                        x: dbHsqcPeaks.map(p => p[0]),
+                        y: dbHsqcPeaks.map(p => p[1]),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: `DB HSQC (${entry.compound.name})`,
+                        marker: { color: 'lightblue', size: 10, symbol: 'x' }
+                    });
+                }
                 
+                if (dbCosyPeaks.length > 0) {
+                    traces.push({
+                        x: dbCosyPeaks.flatMap(p => [p[0], p[1]]),
+                        y: dbCosyPeaks.flatMap(p => [p[1], p[0]]),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: `DB COSY (${entry.compound.name})`,
+                        marker: { color: 'lightgreen', size: 8, symbol: 'x' }
+                    });
+                }
+                
+                if (dbHmbcPeaks.length > 0) {
+                    traces.push({
+                        x: dbHmbcPeaks.map(p => p[0]),
+                        y: dbHmbcPeaks.map(p => p[1]),
+                        mode: 'markers',
+                        type: 'scatter',
+                        name: `DB HMBC (${entry.compound.name})`,
+                        marker: { color: 'lavender', size: 12, symbol: 'x' }
+                    });
+                }
+            });
+
+            if (unmatchedPeaks.hsqc.length > 0) {
                 traces.push({
-                    x: hsqcResults.dbPeaks.map(p => p[0]),
-                    y: hsqcResults.dbPeaks.map(p => p[1]),
+                    x: unmatchedPeaks.hsqc.map(p => p[0]),
+                    y: unmatchedPeaks.hsqc.map(p => p[1]),
                     mode: 'markers',
                     type: 'scatter',
-                    name: 'DB HSQC',
-                    marker: { color: 'lightblue', size: 10, symbol: 'x' }
+                    name: 'Unmatched HSQC',
+                    marker: { color: 'red', size: 10 }
                 });
             }
-            
-            if (cosyResults.totalExp > 0 && cosyResults.totalDb > 0) {
+            if (unmatchedPeaks.cosy.length > 0) {
                 traces.push({
-                    x: cosyResults.expPeaks.flatMap(p => [p[0], p[1]]),
-                    y: cosyResults.expPeaks.flatMap(p => [p[1], p[0]]),
+                    x: unmatchedPeaks.cosy.flatMap(p => [p[0], p[1]]),
+                    y: unmatchedPeaks.cosy.flatMap(p => [p[1], p[0]]),
                     mode: 'markers',
                     type: 'scatter',
-                    name: 'Exp COSY',
-                    marker: { color: 'green', size: 8 }
-                });
-                
-                traces.push({
-                    x: cosyResults.dbPeaks.flatMap(p => [p[0], p[1]]),
-                    y: cosyResults.dbPeaks.flatMap(p => [p[1], p[0]]),
-                    mode: 'markers',
-                    type: 'scatter',
-                    name: 'DB COSY',
-                    marker: { color: 'lightgreen', size: 8, symbol: 'x' }
+                    name: 'Unmatched COSY',
+                    marker: { color: 'orange', size: 8 }
                 });
             }
-            
-            if (hmbcResults.totalExp > 0 && hmbcResults.totalDb > 0) {
+            if (unmatchedPeaks.hmbc.length > 0) {
                 traces.push({
-                    x: hmbcResults.expPeaks.map(p => p[0]),
-                    y: hmbcResults.expPeaks.map(p => p[1]),
+                    x: unmatchedPeaks.hmbc.map(p => p[0]),
+                    y: unmatchedPeaks.hmbc.map(p => p[1]),
                     mode: 'markers',
                     type: 'scatter',
-                    name: 'Exp HMBC',
-                    marker: { color: 'purple', size: 12 }
-                });
-                
-                traces.push({
-                    x: hmbcResults.dbPeaks.map(p => p[0]),
-                    y: hmbcResults.dbPeaks.map(p => p[1]),
-                    mode: 'markers',
-                    type: 'scatter',
-                    name: 'DB HMBC',
-                    marker: { color: 'lavender', size: 12, symbol: 'x' }
+                    name: 'Unmatched HMBC',
+                    marker: { color: 'pink', size: 12 }
                 });
             }
             
@@ -534,9 +399,6 @@
 
         // Initialize the page
         document.addEventListener('DOMContentLoaded', () => {
-            loadStructures();
-            
-            // Set up compare button
             compareBtn.addEventListener('click', comparePeaks);
         });
     </script>
