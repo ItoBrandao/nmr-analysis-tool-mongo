@@ -6,7 +6,7 @@ import logging
 # Import comparison logic and database operations
 from compare_nmr_peaks import compare_peaks
 import detector
-import db_operations # Renamed database.py to db_operations.py
+import db_operations  # Renamed database.py to db_operations.py
 
 app = Flask(__name__)
 
@@ -299,8 +299,8 @@ INDEX_PAGE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NMR Structure Database - Add/Edit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com  "></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400  ;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -399,10 +399,10 @@ INDEX_PAGE = """
 
             <div class="bg-white p-6 rounded-lg shadow-md mb-8">
                 <button id="toggleFormBtn" class="bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 flex items-center justify-center w-full">
-                    <svg id="plusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg id="plusIcon" xmlns="http://www.w3.org/2000/svg  " class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    <svg id="minusIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg id="minusIcon" xmlns="http://www.w3.org/2000/svg  " class="h-6 w-6 mr-2 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6" />
                     </svg>
                     <span id="buttonText">Add New Structure</span>
@@ -714,8 +714,8 @@ STRUCTURES_PAGE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NMR Structures</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com  "></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400  ;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -956,13 +956,13 @@ STRUCTURES_PAGE = """
                 </div>
                 <div class="bg-gray-50 p-4 border-t border-gray-100 flex justify-end space-x-3">
                     <a href="/?editId=${structure._id}" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg  " class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                         Edit
                     </a>
                     <button onclick="deleteStructure('${structure._id}')" class="text-red-600 hover:text-red-900 font-medium text-sm flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg  " class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                         Delete
@@ -1096,9 +1096,9 @@ ANALYSIS_PAGE = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NMR Structure Database - Compare NMR Peaks</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.tailwindcss.com  "></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400  ;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js  "></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -1430,296 +1430,4 @@ ANALYSIS_PAGE = """
                 img.alt = 'HSQC Plot';
                 img.className = 'max-w-full h-auto';
                 hsqcPlotContainer.innerHTML = ''; // Clear existing content
-                hsqcPlotContainer.appendChild(img);
-            } else {
-                hsqcPlotContainer.innerHTML = '<p class="text-gray-500 text-center">No HSQC plot generated.</p>';
-            }
-
-            if (data.cosy_image_base64) {
-                const img = document.createElement('img');
-                img.src = `data:image/png;base64,${data.cosy_image_base64}`;
-                img.alt = 'COSY Plot';
-                img.className = 'max-w-full h-auto';
-                cosyPlotContainer.innerHTML = ''; // Clear existing content
-                cosyPlotContainer.appendChild(img);
-            } else {
-                cosyPlotContainer.innerHTML = '<p class="text-gray-500 text-center">No COSY plot generated.</p>';
-            }
-
-            if (data.hmbc_image_base64) {
-                const img = document.createElement('img');
-                img.src = `data:image/png;base64,${data.hmbc_image_base64}`;
-                img.alt = 'HMBC Plot';
-                img.className = 'max-w-full h-auto';
-                hmbcPlotContainer.innerHTML = ''; // Clear existing content
-                hmbcPlotContainer.appendChild(img);
-            } else {
-                hmbcPlotContainer.innerHTML = '<p class="text-gray-500 text-center">No HMBC plot generated.</p>';
-            }
-        }
-
-        // Show message function (copied from index.html for consistency)
-        function showMessage(message, isError = false) {
-            const messageDiv = isError ? document.getElementById('error-message') : document.getElementById('message');
-            const textSpan = isError ? document.getElementById('error-message-text') : document.getElementById('message-text');
-            
-            textSpan.textContent = message;
-            messageDiv.classList.remove('hidden');
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                messageDiv.classList.add('hidden');
-            }, 5000);
-        }
-    </script>
-</body>
-</html>
-"""
-
-COMPARE_PAGE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compare NMR Peaks</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-            color: #333;
-        }
-        .container {
-            max-width: 1200px;
-        }
-        textarea {
-            min-height: 120px;
-            font-family: monospace;
-        }
-        .animate-spin {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        .nav-link {
-            color: #4b5563;
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            font-size: 0.875rem;
-        }
-        .nav-link:hover {
-            color: #3730a3;
-            background-color: #e0e7ff;
-        }
-        .active-nav-link {
-            color: #3730a3;
-            background-color: #e0e7ff;
-        }
-    </style>
-</head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
-    <div class="flex flex-col min-h-screen">
-        <nav class="bg-white shadow-md">
-            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-                <a href="/" class="text-2xl font-extrabold text-indigo-700">NMR Structure Database</a>
-                <div class="flex space-x-4">
-                    <a href="/" class="nav-link">Add/Edit Structure</a>
-                    <a href="/structures.html" class="nav-link">View Structures</a>
-                    <a href="/analysis.html" class="nav-link">NMR Analysis</a>
-                    <a href="/compare.html" class="nav-link active-nav-link">Compare NMR Peaks</a>
-                </div>
-            </div>
-        </nav>
-
-        <main class="flex-grow container mx-auto p-4 sm:p-6 lg:p-8">
-            <h1 class="text-3xl font-bold text-gray-800 mb-6">Quick Compare HSQC Peaks to Database</h1>
-
-            <div id="message" class="hidden bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
-                <p id="message-text" class="font-bold"></p>
-            </div>
-            <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-                <p id="error-message-text" class="font-bold"></p>
-            </div>
-
-            <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Input HSQC Peaks</h2>
-                <div class="mb-4">
-                    <label for="hsqcPeaksInput" class="block text-sm font-medium text-gray-700">HSQC Peaks (1H, 13C, optional Intensity)</label>
-                    <textarea id="hsqcPeaksInput" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="3.35 49.7 1.0&#10;7.20 128.1 0.5&#10;..."></textarea>
-                    <p class="text-xs text-gray-500 mt-1">Format: 1H_shift 13C_shift [Intensity] (one peak per line)</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label for="delta1H" class="block text-sm font-medium text-gray-700">1H Tolerance (ppm)</label>
-                        <input type="number" step="0.01" id="delta1H" value="0.06"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                    </div>
-                    <div>
-                        <label for="delta13C" class="block text-sm font-medium text-gray-700">13C Tolerance (ppm)</label>
-                        <input type="number" step="0.01" id="delta13C" value="0.8"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                    </div>
-                </div>
-                <button id="compareBtn"
-                        class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-md shadow-md hover:bg-indigo-700 transition duration-300 flex items-center justify-center">
-                    <svg class="animate-spin h-5 w-5 text-white mr-3 hidden" viewBox="0 0 24 24" id="compareSpinner">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Compare Peaks</span>
-                </button>
-            </div>
-
-            <div id="comparisonResultsDiv" class="bg-white p-6 rounded-lg shadow-md hidden">
-                <h2 class="text-xl font-semibold text-gray-700 mb-4">Comparison Results</h2>
-
-                <div class="mb-4">
-                    <h3 class="text-lg font-medium text-gray-800 mb-2">Fully Matched Compounds:</h3>
-                    <ul id="fullyMatchedList" class="list-disc pl-5 text-gray-700">
-                        </ul>
-                    <p id="noFullyMatched" class="text-gray-600 mt-2 hidden">No compounds fully matched.</p>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-medium text-gray-800 mb-2">Partially Matched Compounds:</h3>
-                    <ul id="partiallyMatchedList" class="list-disc pl-5 text-gray-700">
-                        </ul>
-                    <p id="noPartiallyMatched" class="text-gray-600 mt-2 hidden">No compounds partially matched.</p>
-                </div>
-            </div>
-        </main>
-
-        <footer class="bg-gray-800 text-white text-center p-4 mt-8">
-            <p>&copy; 2023 NMR Structure Database. All rights reserved.</p>
-        </footer>
-    </div>
-
-    <script>
-        const hsqcPeaksInput = document.getElementById('hsqcPeaksInput');
-        const delta1HInput = document.getElementById('delta1H');
-        const delta13CInput = document.getElementById('delta13C');
-        const compareBtn = document.getElementById('compareBtn');
-        const compareSpinner = document.getElementById('compareSpinner');
-        const comparisonResultsDiv = document.getElementById('comparisonResultsDiv');
-        const fullyMatchedList = document.getElementById('fullyMatchedList');
-        const partiallyMatchedList = document.getElementById('partiallyMatchedList');
-        const noFullyMatched = document.getElementById('noFullyMatched');
-        const noPartiallyMatched = document.getElementById('noPartiallyMatched');
-
-        compareBtn.addEventListener('click', comparePeaks);
-
-        async function comparePeaks() {
-            // Clear previous results
-            fullyMatchedList.innerHTML = '';
-            partiallyMatchedList.innerHTML = '';
-            noFullyMatched.classList.add('hidden');
-            noPartiallyMatched.classList.add('hidden');
-            comparisonResultsDiv.classList.add('hidden');
-
-            // Show loading state
-            compareBtn.disabled = true;
-            compareSpinner.classList.remove('hidden');
-
-            const hsqcPeaks = hsqcPeaksInput.value;
-            const delta1H = parseFloat(delta1HInput.value);
-            const delta13C = parseFloat(delta13CInput.value);
-
-            if (!hsqcPeaks.trim()) {
-                showMessage('Please enter HSQC peaks for comparison.', true);
-                compareBtn.disabled = false;
-                compareSpinner.classList.add('hidden');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/quick-match', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        hsqcPeaks: hsqcPeaks,
-                        d1h: delta1H,
-                        d13c: delta13C
-                    })
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Comparison failed');
-                }
-
-                displayComparisonResults(result);
-            } catch (error) {
-                console.error("Error during peak comparison:", error);
-                showMessage(`Error: ${error.message}`, true);
-            } finally {
-                compareBtn.disabled = false;
-                compareSpinner.classList.add('hidden');
-            }
-        }
-
-        function displayComparisonResults(results) {
-            fullyMatchedList.innerHTML = '';
-            partiallyMatchedList.innerHTML = '';
-            noFullyMatched.classList.add('hidden');
-            noPartiallyMatched.classList.add('hidden');
-
-            if (results.fully && results.fully.length > 0) {
-                results.fully.forEach(compoundId => {
-                    const li = document.createElement('li');
-                    li.textContent = compoundId;
-                    fullyMatchedList.appendChild(li);
-                });
-            } else {
-                noFullyMatched.classList.remove('hidden');
-            }
-
-            if (results.partial && results.partial.length > 0) {
-                results.partial.forEach(match => {
-                    const li = document.createElement('li');
-                    // match is like ['compoundA', '1/2', '50.00%']
-                    li.textContent = `${match[0]} (Matched: ${match[1]}, Percentage: ${match[2]})`;
-                    partiallyMatchedList.appendChild(li);
-                });
-            } else {
-                noPartiallyMatched.classList.remove('hidden');
-            }
-
-            comparisonResultsDiv.classList.remove('hidden');
-        }
-
-        // Show message function
-        function showMessage(message, isError = false) {
-            const messageDiv = isError ? document.getElementById('error-message') : document.getElementById('message');
-            const textSpan = isError ? document.getElementById('error-message-text') : document.getElementById('message-text');
-            
-            textSpan.textContent = message;
-            messageDiv.classList.remove('hidden');
-            
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-                messageDiv.classList.add('hidden');
-            }, 5000);
-        }
-
-        // Initial setup
-        document.addEventListener('DOMContentLoaded', () => {
-            // You can pre-fill with example peaks if desired
-            // hsqcPeaksInput.value = "3.35 49.7 1.0\n7.20 128.1 0.5";
-        });
-    </script>
-</body>
-</html>
-"""
-
-if __name__ == "__main__":
-    # Ensure the database connection is attempted when the app starts
-    db_operations.initialize_db_connection()
-    app.run(debug=True)
+                hsqcPlotContainer.appendChild
